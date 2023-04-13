@@ -2,6 +2,7 @@ package core
 
 import (
 	"dbsync/sync/shared"
+	"log"
 )
 
 //Status data signature status
@@ -23,7 +24,9 @@ func (s *Status) SetInSync(inSync bool) {
 	s.inSync = &inSync
 }
 
+// hzw 同步检查
 func (s *Status) InSync() (bool, error) {
+	log.Println("InSync()")
 	if s.syncChecker != nil {
 		if err := s.syncChecker(); err != nil {
 			return false, err

@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"log"
 	"time"
 )
@@ -15,7 +16,6 @@ type Context struct {
 	DMLTimeout time.Duration
 }
 
-
 //Log logs
 func (c *Context) Log(v ...interface{}) {
 	if c.Debug {
@@ -23,13 +23,18 @@ func (c *Context) Log(v ...interface{}) {
 			v[0] = fmt.Sprintf("[%v] %v", c.ID, v[0])
 		}
 		log.Print(v...)
+		// logrus.Print(v...)
 	}
 }
 
 //NewContext returns new context
 func NewContext(ID string, debug bool) *Context {
 	return &Context{
-		ID:      ID,
-		Debug:   debug,
+		ID:    ID,
+		Debug: debug,
 	}
+}
+
+func testhehe() {
+	logrus.Print("hello")
 }

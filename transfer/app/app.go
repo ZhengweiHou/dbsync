@@ -4,12 +4,13 @@ import (
 	"dbsync/transfer"
 	"flag"
 	"fmt"
-	_ "github.com/alexbrainman/odbc"
+	//	_ "github.com/alexbrainman/odbc"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/gops/agent"
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-oci8"
+	//	_ "github.com/mattn/go-oci8"
+	_ "github.com/ibmdb/go_ibm_db"
 	_ "github.com/vertica/vertica-sql-go"
 	_ "github.com/viant/asc"
 	_ "github.com/viant/bgc"
@@ -24,6 +25,8 @@ var debug = flag.Bool("debug", false, "debug flag")
 
 func main() {
 	flag.Parse()
+	log.SetFlags(log.Llongfile)
+	log.Println("日志测试")
 	go func() {
 		if err := agent.Listen(agent.Options{}); err != nil {
 			log.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"dbsync/sync/shared"
 	"dbsync/sync/sql"
 	"fmt"
+	"log"
 )
 
 //Service represents a merge service
@@ -25,6 +26,7 @@ type service struct {
 }
 
 func (s *service) delete(ctx *shared.Context, transferable *core.Transferable) error {
+	log.Print("delete()")
 	deleteFilter := shared.CloneMap(transferable.Filter)
 	DML, err := s.Builder.DML(shared.DMLDelete, transferable.Suffix, deleteFilter)
 	if err != nil {
@@ -33,7 +35,6 @@ func (s *service) delete(ctx *shared.Context, transferable *core.Transferable) e
 	transferable.DML = DML
 	return s.dao.ExecSQL(ctx, DML)
 }
-
 
 func (s *service) append(ctx *shared.Context, transferable *core.Transferable) error {
 	DML := s.Builder.AppendDML(transferable.Suffix, transferable.OwnerSuffix)
@@ -47,6 +48,7 @@ func (s *service) append(ctx *shared.Context, transferable *core.Transferable) e
 
 //dedupeAppend removed all record from transient table that exist in dest, then appends only new
 func (s *service) dedupeAppend(ctx *shared.Context, transferable *core.Transferable) (err error) {
+	log.Print("dedupeAppend()")
 	if len(s.Sync.IDColumns) == 0 {
 		return s.append(ctx, transferable)
 	}
@@ -61,6 +63,7 @@ func (s *service) dedupeAppend(ctx *shared.Context, transferable *core.Transfera
 }
 
 func (s *service) merge(ctx *shared.Context, transferable *core.Transferable) error {
+	log.Print("merge()")
 	DML, err := s.Builder.DML(s.MergeStyle, transferable.Suffix, shared.CloneMap(transferable.Filter))
 	if err != nil {
 		return err
@@ -72,7 +75,6 @@ func (s *service) merge(ctx *shared.Context, transferable *core.Transferable) er
 	return err
 }
 
-
 //Delete delete data from dest table for supplied filter
 func (s *service) Delete(ctx *shared.Context, filter map[string]interface{}) error {
 	DML, _ := s.Builder.DML(shared.DMLFilteredDelete, "", filter)
@@ -81,6 +83,7 @@ func (s *service) Delete(ctx *shared.Context, filter map[string]interface{}) err
 
 //Merge merges data for supplied transferable
 func (s *service) Merge(ctx *shared.Context, transferable *core.Transferable) (err error) {
+	log.Printf("Merge() IsDirect:%t transferable.Method:%s \n", transferable.IsDirect, transferable.Method)
 	if transferable.IsDirect {
 		return fmt.Errorf("transferable was direct")
 	}
@@ -98,7 +101,7 @@ func (s *service) Merge(ctx *shared.Context, transferable *core.Transferable) (e
 			err = s.dedupeAppend(ctx, transferable)
 		}
 		return err
-	} else if  s.AppendUpdateOnly {
+	} else if s.AppendUpdateOnly {
 		return s.merge(ctx, transferable)
 	}
 	switch transferable.Method {

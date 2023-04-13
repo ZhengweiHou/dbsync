@@ -3,9 +3,11 @@ package sync
 import (
 	"dbsync/sync/scheduler"
 	"fmt"
-	"github.com/viant/toolbox"
+	"log"
 	"net/http"
 	"os"
+
+	"github.com/viant/toolbox"
 )
 
 const baseURI = "/v1/api"
@@ -15,7 +17,7 @@ var debugMode = toolbox.AsBoolean(os.Getenv("DS_SYNC_DEBUG"))
 //Router represents a router
 type Router struct {
 	*http.ServeMux
-	service Service
+	service SyncService
 }
 
 func (r Router) route() {
@@ -26,6 +28,12 @@ func (r Router) route() {
 
 func (r Router) api() http.Handler {
 	router := toolbox.NewServiceRouter(
+		toolbox.ServiceRouting{
+			HTTPMethod: "POST",
+			URI:        fmt.Sprintf("%v/listsync", baseURI),
+			Handler:    r.service.ListSync,
+			Parameters: []string{"requests"},
+		},
 		toolbox.ServiceRouting{
 			HTTPMethod: "POST",
 			URI:        fmt.Sprintf("%v/sync", baseURI),
@@ -78,6 +86,7 @@ func (r Router) api() http.Handler {
 				return
 			}
 		}()
+		log.Println("router:", reader.RequestURI)
 		if err := router.Route(writer, reader); err != nil {
 			http.Error(writer, err.Error(), 500)
 		}
@@ -95,7 +104,7 @@ func (r Router) status() http.Handler {
 }
 
 //NewRouter creates a new router
-func NewRouter(service Service) http.Handler {
+func NewRouter(service SyncService) http.Handler {
 	var result = &Router{
 		ServeMux: http.NewServeMux(),
 		service:  service,

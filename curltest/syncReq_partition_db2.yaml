@@ -1,0 +1,38 @@
+#- Request
+id: hzwsynctest
+debug: true
+table: STUDENT
+idColumns: 
+  - id
+partition:
+  threads: 3
+  SyncMode: batch
+  columns:
+    - AGE
+    - GRADES
+diff:
+  batchSize: 1
+
+#criteria:
+#  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
+    #  modified: '>NOW()-INTERVAL 100000 MINUTE'
+# mergeStyle: mergeInto
+source: 
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  driverName: go_ibm_db
+  parameters: 
+    dbname: db1
+  # partitionSQL: SELECT AGE  FROM STUDENT  GROUP BY age ORDER BY age
+  partitionSQL: SELECT AGE,GRADES  FROM STUDENT  GROUP BY age,GRADES  ORDER BY age,GRADES
+#  table: student
+dest: 
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50001;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  driverName: go_ibm_db
+  parameters: 
+    dbname: db2
+  table: STUDENT2
+
+transfer: 
+  endpointIP: 127.0.0.1:8082
+  writerThreads: 2
+  batchSize: 100

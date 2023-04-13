@@ -13,12 +13,15 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var errPreviousJobRunning = errors.New("previous sync is running")
 
 //Service represents a sync1 service
-type Service interface {
+type SyncService interface {
+	ListSync(requests []*Request) []*Response
 	//Sync sync1 source with destination
 	Sync(request *Request) *Response
 	//ListJobs list active jobs
@@ -29,7 +32,7 @@ type Service interface {
 	History() history.Service
 }
 
-type service struct {
+type syncService struct {
 	*shared.Config
 	jobs      jobs.Service
 	history   history.Service
@@ -37,19 +40,33 @@ type service struct {
 	mutex     *shared.Mutex
 }
 
-func (s *service) Scheduler() scheduler.Service {
+func (s *syncService) Scheduler() scheduler.Service {
 	return s.scheduler
 }
 
-func (s *service) Jobs() jobs.Service {
+func (s *syncService) Jobs() jobs.Service {
 	return s.jobs
 }
 
-func (s *service) History() history.Service {
+func (s *syncService) History() history.Service {
 	return s.history
 }
+func (s *syncService) ListSync(requests []*Request) []*Response {
+	fmt.Println(len(requests))
 
-func (s *service) Sync(request *Request) *Response {
+	var responses = make([]*Response, 0)
+
+	for i := range requests {
+		// TODO 批量处理同步请求
+		responses = append(responses, &Response{
+			JobID:  requests[i].ID(),
+			Status: shared.StatusRunning,
+		})
+	}
+
+	return responses
+}
+func (s *syncService) Sync(request *Request) *Response {
 	response, err := s.sync(request)
 	if err != nil {
 		log.Printf("[%v] %v", request.ID(), err)
@@ -57,7 +74,7 @@ func (s *service) Sync(request *Request) *Response {
 	return response
 }
 
-func (s *service) sync(request *Request) (response *Response, err error) {
+func (s *syncService) sync(request *Request) (response *Response, err error) {
 	response = &Response{
 		JobID:  request.ID(),
 		Status: shared.StatusRunning,
@@ -74,7 +91,8 @@ func (s *service) sync(request *Request) (response *Response, err error) {
 		return nil, err
 	}
 	ctx = shared.NewContext(job.ID, request.Debug)
-	log.Printf("[%v] starting %v sync\n", job.ID, request.Table)
+	// log.Printf("[%v] starting %v sync\n", job.ID, request.Table)
+	logrus.Debugf("[%v] starting %v sync", job.ID, request.Table)
 	syncRequest, _ := json.Marshal(request)
 	ctx.Log(fmt.Sprintf("sync: %s", syncRequest))
 	ctx.UseLock = request.UseLock()
@@ -92,7 +110,7 @@ func (s *service) sync(request *Request) (response *Response, err error) {
 	return response, err
 }
 
-func (s *service) onJobDone(ctx *shared.Context, job *core.Job, response *Response, err error) {
+func (s *syncService) onJobDone(ctx *shared.Context, job *core.Job, response *Response, err error) {
 	if job == nil {
 		response.SetError(err)
 		return
@@ -119,29 +137,38 @@ func (s *service) onJobDone(ctx *shared.Context, job *core.Job, response *Respon
 	response.Status = job.Status
 }
 
-func (s *service) runSyncJob(ctx *shared.Context, job *core.Job, request *Request, response *Response) (err error) {
+func (s *syncService) runSyncJob(ctx *shared.Context, job *core.Job, request *Request, response *Response) (err error) {
+	log.Println(">>执行SyncJob<<")
 	defer func() {
+		log.Println("-SyncJob onJobDone")
 		s.onJobDone(ctx, job, response, err)
 	}()
 	dbSync := request.Sync
-	service := dao.New(dbSync)
+	log.Println("-创建dao service")
+	service := dao.New(dbSync) // hzw 创建dao service
+	log.Println("-dao service init")
 	if err = service.Init(ctx); err != nil {
 		return err
 	}
-	partitionService := partition.New(dbSync, service, shared.NewMutex(), s.jobs, s.history)
+	log.Println("-创建partitionService")
+	partitionService := partition.New(dbSync, service, shared.NewMutex(), s.jobs, s.history) // hzw 创建partitionService
 	defer func() {
+		log.Println("-关闭 partitionService")
 		_ = partitionService.Close()
 	}()
 
+	log.Println("-init partitionService ")
 	if err = partitionService.Init(ctx); err == nil {
-		if err = partitionService.Build(ctx); err == nil {
-			err = partitionService.Sync(ctx)
+		log.Println("-build partitionService ")
+		if err = partitionService.Build(ctx); err == nil { // hzw partService 构建，会查询源、目标聚合签名
+			log.Println("- partitionService 执行同步")
+			err = partitionService.Sync(ctx) // hzw 执行同步
 		}
 	}
 	return err
 }
 
-func (s *service) getJob(ID string) (*core.Job, error) {
+func (s *syncService) getJob(ID string) (*core.Job, error) {
 	s.mutex.Lock(ID)
 	defer s.mutex.Unlock(ID)
 	job := s.jobs.Get(ID)
@@ -153,7 +180,7 @@ func (s *service) getJob(ID string) (*core.Job, error) {
 	return job, nil
 }
 
-func (s *service) runScheduledJob(schedulable *scheduler.Schedulable) (err error) {
+func (s *syncService) runScheduledJob(schedulable *scheduler.Schedulable) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("fatal error: %v", r)
@@ -167,8 +194,8 @@ func (s *service) runScheduledJob(schedulable *scheduler.Schedulable) (err error
 }
 
 //New creates a new service or error
-func New(config *shared.Config) (Service, error) {
-	service := &service{
+func New(config *shared.Config) (SyncService, error) {
+	service := &syncService{
 		Config:  config,
 		mutex:   shared.NewMutex(),
 		history: history.New(config),

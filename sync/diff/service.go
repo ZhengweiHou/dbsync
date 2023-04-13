@@ -7,6 +7,8 @@ import (
 	"dbsync/sync/dao"
 	"dbsync/sync/shared"
 	"fmt"
+	"log"
+
 	"github.com/pkg/errors"
 )
 
@@ -80,7 +82,9 @@ func (d *service) FetchAll(ctx *shared.Context, filter map[string]interface{}) (
 	return source, dest, err
 }
 
+// hzw ??
 func (d *service) UpdateStatus(ctx *shared.Context, status *core.Status, source, dest core.Record, filter map[string]interface{}, narrowInSyncSubset bool) (err error) {
+	log.Println("UpdateStatus")
 	inSync := false
 	defer func() {
 		ctx.Log(fmt.Sprintf("(%v): in sync: %v, %v\n", filter, inSync, status.Method))
@@ -124,6 +128,7 @@ func (d *service) UpdateStatus(ctx *shared.Context, status *core.Status, source,
 	}
 
 	checker := func() error {
+		log.Println("diff checker()")
 		narrowFilter := shared.CloneMap(filter)
 		narrowFilter[idColumn] = criteria.NewLessOrEqual(status.Dest.Max())
 		if d.isInSync(ctx, narrowFilter) {
@@ -141,7 +146,7 @@ func (d *service) UpdateStatus(ctx *shared.Context, status *core.Status, source,
 		}
 		return err
 	}
-	status.SyncChecker(checker)
+	status.SyncChecker(checker) // hzw ??谁调用的：status.Insync()
 	return err
 }
 

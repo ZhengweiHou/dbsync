@@ -1,3 +1,0 @@
-
-- rewrite using viant/sqlx
-- add better BigQuery resource sync management account for quota/limits

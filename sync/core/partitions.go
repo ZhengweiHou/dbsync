@@ -5,9 +5,11 @@ import (
 	"dbsync/sync/criteria"
 	"dbsync/sync/shared"
 	"fmt"
-	"github.com/viant/toolbox"
+	"log"
 	"strings"
 	"sync"
+
+	"github.com/viant/toolbox"
 )
 
 //Partitions represents partitions
@@ -76,8 +78,13 @@ func (p *Partitions) BatchTransferable() *Transferable {
 
 //Criteria returns partitions criteria
 func (p *Partitions) Criteria() []map[string]interface{} {
-	batch := criteria.NewBatch(p.Strategy.Diff.BatchSize)
+	log.Println("----criteria.NewBatch")
+	batch := criteria.NewBatch(p.Strategy.Diff.BatchSize) // hzw 创建batch
+
+	log.Println("----p Partitions Range")
 	_ = p.Range(func(partition *Partition) error {
+
+		log.Println("----partitions.Range handler: batch.Add(partition.Filter)")
 		batch.Add(partition.Filter)
 		return nil
 	})
@@ -90,14 +97,16 @@ func (p *Partitions) Criteria() []map[string]interface{} {
 
 //Range range over partition
 func (p *Partitions) Range(handler func(partition *Partition) error) error {
+	log.Println("Range range over partition")
 	partitions := p.Source
 	for i := range partitions {
 		p.Add(1)
-		p.throttleChannel <- true
+		p.throttleChannel <- true // 并发控制 类似于加锁
+		log.Println("(goroutine) partition Range do handler index:", i)
 		go func(partition *Partition) {
 			defer p.Done()
-			partition.err = handler(partition)
-			<-p.throttleChannel
+			partition.err = handler(partition) // hzw 执行自定义handler
+			<-p.throttleChannel                // 类似于解锁
 		}(partitions[i])
 	}
 

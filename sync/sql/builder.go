@@ -3,16 +3,18 @@ package sql
 import (
 	"dbsync/sync/contract"
 	"dbsync/sync/criteria"
+	"log"
 
 	"dbsync/sync/contract/strategy"
 	"dbsync/sync/contract/strategy/diff"
 	"dbsync/sync/shared"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/viant/dsc"
 	"github.com/viant/toolbox"
 	"github.com/viant/toolbox/data"
-	"sort"
-	"strings"
 )
 
 var reservedKeyword = map[string]bool{
@@ -270,7 +272,7 @@ func (b *Builder) init() {
 	}
 }
 
-//SignatureDQL returns sync difference DQL
+//SignatureDQL returns sync difference DQL hzw 构建数据查询语句
 func (b *Builder) SignatureDQL(resource *contract.Resource, criteria map[string]interface{}) string {
 	return b.partitionDQL(criteria, resource, func(projection *[]string, dimension map[string]bool) {
 		for _, column := range b.Diff.Columns {
@@ -315,7 +317,7 @@ func (b *Builder) partitionDQL(criteria map[string]interface{}, resource *contra
 	return SQL
 }
 
-//DML returns DML
+//DML returns DML 构建hzw 数据管理语句
 func (b *Builder) DML(dmlType string, suffix string, filter map[string]interface{}) (string, error) {
 	if suffix == "" && dmlType != shared.DMLFilteredDelete {
 		return "", fmt.Errorf("sufifx was empty")
@@ -717,6 +719,7 @@ func isUpperCaseTable(columns []dsc.Column) bool {
 
 //NewBuilder creates a new builder
 func NewBuilder(sync *contract.Sync, ddl string, destColumns []dsc.Column) (*Builder, error) {
+	log.Print("---sql.NewBuilder")
 	if len(destColumns) == 0 {
 		return nil, fmt.Errorf("columns were empty")
 	}

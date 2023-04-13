@@ -7,9 +7,11 @@ import (
 	"dbsync/sync/shared"
 	"dbsync/sync/sql"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/viant/dsc"
-	"time"
 )
 
 //errSuffixWasEmpty represents suffix empty error
@@ -96,6 +98,7 @@ func (s *service) Partitions(ctx *shared.Context, kind contract.ResourceKind) (c
 
 //DropTransientTable drops transient table
 func (s *service) DropTransientTable(ctx *shared.Context, suffix string) (err error) {
+	log.Println("DropTransientTable")
 	if suffix == "" {
 		return errSuffixWasEmpty
 	}
@@ -114,13 +117,14 @@ func (s *service) DropTransientTable(ctx *shared.Context, suffix string) (err er
 
 //RecreateTransientTable recreate transient table
 func (s *service) RecreateTransientTable(ctx *shared.Context, suffix string) (err error) {
+	log.Printf("RecreateTransientTable suffix:%v \n", suffix)
 	_ = s.DropTransientTable(ctx, suffix)
 	return s.CreateTransientTable(ctx, suffix)
 }
 
-
 //CreateTransientTable create transient table
 func (s *service) CreateTransientTable(ctx *shared.Context, suffix string) (err error) {
+	log.Println("CreateTransientTable")
 	if suffix == "" {
 		return errSuffixWasEmpty
 	}
@@ -132,8 +136,8 @@ func (s *service) CreateTransientTable(ctx *shared.Context, suffix string) (err 
 	}
 	DDL := s.builder.DDLFromSelect(suffix)
 	if err = s.ExecSQL(ctx, DDL); err == nil {
-			return nil
-		}
+		return nil
+	}
 	//Fallback to dialect DDL
 	DDL = s.builder.DDL(suffix)
 	//if s.Transfer.TempDatabase != "" {
@@ -152,8 +156,10 @@ func (s *service) partitions(ctx *shared.Context, resource *dbResource) (core.Re
 	return result, err
 }
 
-//Signatures returns data signatures
+//Signatures returns data signatures hzw 查询数据聚合签名
 func (s *service) Signatures(ctx *shared.Context, kind contract.ResourceKind, filter map[string]interface{}) (core.Records, error) {
+
+	log.Println("Signatures  kind:", kind)
 	dbResource := s.dbResource(kind)
 	return s.signatures(ctx, dbResource, filter)
 }
@@ -173,8 +179,9 @@ func (s *service) Signature(ctx *shared.Context, kind contract.ResourceKind, fil
 }
 
 func (s *service) signatures(ctx *shared.Context, dbResource *dbResource, filter map[string]interface{}) (core.Records, error) {
+	log.Println(" signatures")
 	result := core.Records{}
-	SQL := s.builder.SignatureDQL(dbResource.Resource, filter)
+	SQL := s.builder.SignatureDQL(dbResource.Resource, filter) // hzw 构建diff DQL(Data QueryLanguage)
 	ctx.Log(SQL)
 	err := dbResource.DB.ReadAll(&result, SQL, nil, nil)
 	return result, err
@@ -228,8 +235,6 @@ func (s *service) ExecSQL(ctx *shared.Context, SQL string) (err error) {
 	return s.executeInBackground(err, SQL, ctx)
 }
 
-
-
 func (s *service) executeInBackground(err error, SQL string, ctx *shared.Context) error {
 	var conn dsc.Connection
 	conn, err = s.dest.DB.ConnectionProvider().Get()
@@ -253,7 +258,6 @@ func (s *service) executeInBackground(err error, SQL string, ctx *shared.Context
 	}
 	return err
 }
-
 
 //DbName returns db name for supplied source kind
 func (s *service) DbName(ctx *shared.Context, kind contract.ResourceKind) (string, error) {
@@ -286,7 +290,8 @@ func (s *service) initDB(ctx *shared.Context) (err error) {
 }
 
 func (s *service) initBuilder(ctx *shared.Context) error {
-	columns, err := s.Columns(ctx, s.dest.Table)
+	log.Print("---解析表字段")
+	columns, err := s.Columns(ctx, s.dest.Table) // hzw 解析出表字段
 	if err != nil {
 		return err
 	}
@@ -298,8 +303,10 @@ func (s *service) initBuilder(ctx *shared.Context) error {
 
 //Init initialises service
 func (s *service) Init(ctx *shared.Context) error {
+	log.Println("--initDB")
 	err := s.initDB(ctx)
 	if err == nil {
+		log.Println("--initBuilder")
 		err = s.initBuilder(ctx)
 	}
 	return err

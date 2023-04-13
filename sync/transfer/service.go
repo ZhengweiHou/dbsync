@@ -4,16 +4,19 @@ import (
 	"dbsync/sync/contract"
 	"dbsync/sync/core"
 	"dbsync/sync/dao"
+	"log"
+
 	"github.com/go-errors/errors"
 
 	"dbsync/sync/shared"
 	"dbsync/sync/sql"
 	"fmt"
-	"github.com/viant/dsc"
-	"github.com/viant/toolbox"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/viant/dsc"
+	"github.com/viant/toolbox"
 )
 
 const (
@@ -163,10 +166,12 @@ func (s *service) Post(ctx *shared.Context, request *Request, transferable *core
 
 func (s *service) post(ctx *shared.Context, request *Request, transferable *core.Transferable, seq uint32) (err error) {
 	targetURL := fmt.Sprintf(transferURL, s.Transfer.EndpointIP)
+	log.Println("post() targetURL:", targetURL)
 	ctx.Log(fmt.Sprintf("post: %v\n", targetURL))
 	if ctx.Debug {
 		_ = toolbox.DumpIndent(request, true)
 	}
+	_ = toolbox.DumpIndent(request, true)
 	var response = &Response{}
 	if err = toolbox.RouteToService("post", targetURL, request, response); err != nil {
 		return err

@@ -2,10 +2,12 @@ package transfer
 
 import (
 	"fmt"
-	"github.com/viant/toolbox"
-	"github.com/viant/toolbox/data"
+	"log"
 	"sync/atomic"
 	"time"
+
+	"github.com/viant/toolbox"
+	"github.com/viant/toolbox/data"
 )
 
 type transfer struct {
@@ -24,7 +26,8 @@ func (t *transfer) push(record map[string]interface{}) error {
 	t.collection.Add(record)
 	result := atomic.AddUint64(&t.count, 1)
 	if result%t.batchSize == 0 {
-		t.batches <- newBatch(t.collection)
+		log.Println("向transfer.batches chan 中写入batch")
+		t.batches <- newBatch(t.collection) // 当batches满时此处会堵塞
 	}
 	return nil
 }
@@ -46,17 +49,18 @@ func (t *transfer) close() {
 }
 
 func (t *transfer) getBatch() *transferBatch {
+	log.Println("getBatch()")
 	if t.isClosed() {
 		select {
-		case b := <-t.batches:
+		case b := <-t.batches: // 从t.batches channel中读取batch
 			return b
-		case <-time.After(time.Millisecond):
+		case <-time.After(time.Millisecond): // hzw 超时？？
 		}
-		return newBatch(t.collection)
+		return newBatch(t.collection) // 创建新的batch，原collection中的date切片会重置
 	}
 
 	select {
-	case b := <-t.batches:
+	case b := <-t.batches: // 从t.batches channel中读取batch
 		return b
 	case <-t.isFlushed:
 		return newBatch(t.collection)
@@ -80,12 +84,13 @@ type transfers struct {
 }
 
 func (t *transfers) push(record map[string]interface{}) error {
-	var index = int(atomic.LoadUint64(&t.index)) % len(t.transfers)
+	var index = int(atomic.LoadUint64(&t.index)) % len(t.transfers) //
 	count := int(atomic.AddUint64(&t.count, 1))
 	if count%t.batchSize == 0 {
-		index = (int(atomic.AddUint64(&t.index, 1)) - 1) % len(t.transfers)
+		// index = (int(atomic.AddUint64(&t.index, 1)) - 1) % len(t.transfers) // 这不是脱裤子放屁吗，改成下面只留下累加，index还是上面计算的值！！
+		atomic.AddUint64(&t.index, 1)
 	}
-	return t.transfers[index].push(record)
+	return t.transfers[index].push(record) // TODO 能否由此处返回当前transfers是否已经推满
 }
 
 func (t *transfers) close() {
@@ -127,7 +132,7 @@ func newBatch(collection *data.CompactedSlice) *transferBatch {
 	size := collection.Size()
 	return &transferBatch{
 		size:   size,
-		ranger: collection.Ranger(),
+		ranger: collection.Ranger(), // Ranger后collection中的数据会被清除
 		fields: collection.Fields(),
 	}
 }

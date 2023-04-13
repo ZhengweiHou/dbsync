@@ -2,8 +2,7 @@ package transfer
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/viant/dsc"
+	"log"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -11,6 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/viant/dsc"
 )
 
 const maxTaskHistory = 10
@@ -52,8 +54,10 @@ func (s *Service) Task(id int, writer http.ResponseWriter) *Task {
 	return response
 }
 
-//Transfer transfer data
+//hzw trans 1 Transfer transfer data
 func (s *Service) Transfer(request *Request) *Response {
+	log.Printf("%#v \n", s)
+	log.Println("trans Transfer")
 	var response = &Response{Status: StatusOk}
 	rand.Seed((time.Now().UTC().UnixNano()))
 	response.TaskID = int(rand.Int31())
@@ -61,7 +65,8 @@ func (s *Service) Transfer(request *Request) *Response {
 	var err error
 	if err = request.Init(); err == nil {
 		if err = request.Validate(); err == nil {
-			task, err = NewTask(request)
+			log.Println("通过request创建task")
+			task, err = NewTask(request) // hzw 通过request创建task
 		}
 	}
 	if err != nil {
@@ -74,7 +79,7 @@ func (s *Service) Transfer(request *Request) *Response {
 	s.mux.Unlock()
 	task.Request = request
 	if !request.Async {
-		s.transfer(request, response, task)
+		s.transfer(request, response, task) // 执行transfer
 	} else {
 		go s.transfer(request, response, task)
 	}
@@ -82,6 +87,7 @@ func (s *Service) Transfer(request *Request) *Response {
 }
 
 func (s *Service) transfer(request *Request, response *Response, task *Task) {
+	log.Println("transfer")
 	var err error
 	defer func() {
 		var endTime = time.Now()
@@ -101,12 +107,22 @@ func (s *Service) transfer(request *Request, response *Response, task *Task) {
 	if err != nil {
 		response.SetError(err)
 	}
+
+	// log.Println("readData")
+	// err = s.readData(request, response, task)
+
+	log.Println("writeData...")
 	for i := 0; i < request.WriterThreads; i++ {
-		go s.writeData(request, response, task, task.transfers.transfers[i])
+		log.Println("(goroutine)writeData i:", i)
+		go s.writeData(request, response, task, task.transfers.transfers[i]) // 每个transfer对应一个写协程
 	}
+
+	log.Println("readData")
 	err = s.readData(request, response, task)
 	response.SetError(err)
-	task.isWriteCompleted.Wait()
+	log.Println("WaitWriteCompleted...")
+	task.isWriteCompleted.Wait() // hzw 等所有的task完成(为什么这里执行了库中的表才有数据？)
+	log.Println("WriteCompleted!")
 	if s.callback != nil {
 		s.callback(task)
 	}
@@ -128,7 +144,7 @@ func (s *Service) getTargetTable(request *Request, task *Task, batch *transferBa
 
 func (s *Service) writeData(request *Request, response *Response, task *Task, transfer *transfer) {
 	var err error
-	task.isWriteCompleted.Add(1)
+	task.isWriteCompleted.Add(1) // 主线程会wait，添加等待数
 	var count = 0
 	defer func() {
 		task.isWriteCompleted.Done()
@@ -139,13 +155,14 @@ func (s *Service) writeData(request *Request, response *Response, task *Task, tr
 		}
 	}()
 	var persist func(batch *transferBatch) error
-	batch := transfer.getBatch()
+	log.Println("第一次读取数据")
+	batch := transfer.getBatch() // 第一次读取数据
 	var table *dsc.TableDescriptor
 	table, err = s.getTargetTable(request, task, batch)
 	if err != nil {
 		return
 	}
-	dmlProvider := dsc.NewMapDmlProvider(table)
+	dmlProvider := dsc.NewMapDmlProvider(table) // 获取 date manage langrage 提供者
 	sqlProvider := func(item interface{}) *dsc.ParametrizedSQL {
 		return dmlProvider.Get(dsc.SQLTypeInsert, item)
 	}
@@ -161,6 +178,7 @@ func (s *Service) writeData(request *Request, response *Response, task *Task, tr
 		if batch.size == 0 {
 			return nil
 		}
+		log.Println("持久化数据 记录数", batch.size) // 调用dsc的持久化逻辑
 		_, err = task.dest.PersistData(connection, batch.ranger, request.Dest.Table, dmlProvider, sqlProvider)
 		if err == nil {
 			atomic.AddUint64(&task.WriteCount, uint64(batch.size))
@@ -176,6 +194,8 @@ func (s *Service) writeData(request *Request, response *Response, task *Task, tr
 		if task.HasError() {
 			break
 		}
+		// 循环读取数据
+		log.Println("循环读取数据")
 		batch := transfer.getBatch()
 		if batch.size == 0 && !task.IsReading() {
 			break
@@ -184,7 +204,9 @@ func (s *Service) writeData(request *Request, response *Response, task *Task, tr
 			return
 		}
 	}
-	err = persist(transfer.getBatch())
+
+	log.Println("最后一次读取数据")
+	err = persist(transfer.getBatch()) // 最后一次读取数据
 }
 
 func (s *Service) readData(request *Request, response *Response, task *Task) error {
@@ -197,7 +219,7 @@ func (s *Service) readData(request *Request, response *Response, task *Task) err
 			response.SetError(err)
 		}
 		for _, transfer := range task.transfers.transfers {
-			transfer.close()
+			transfer.close() // 会调用flush，通知write协程
 		}
 	}()
 
@@ -209,14 +231,16 @@ func (s *Service) readData(request *Request, response *Response, task *Task) err
 		upperCaseData = isUpperCaseTable(table.Columns)
 		lowerCaseData = isLowerCaseTable(table.Columns)
 	}
+	log.Println("source.ReadAllWithHandler...")
 	err = task.source.ReadAllWithHandler(request.Source.Query, nil, func(scanner dsc.Scanner) (bool, error) {
+		log.Println("ReadAllWithHandler")
 		if task.HasError() {
 			return false, nil
 		}
 		var record = make(map[string]interface{})
 		task.ReadCount++
 
-		err := scanner.Scan(&record)
+		err := scanner.Scan(&record) //从数据库读取一条数据
 		if err != nil {
 
 			return false, errors.Wrap(err, "failed to scan")
@@ -234,7 +258,8 @@ func (s *Service) readData(request *Request, response *Response, task *Task) err
 		if len(transformed) > 0 {
 			record = transformed
 		}
-		err = task.transfers.push(record)
+		log.Println("task.transfers.push(record)   transfers.index:", task.transfers.index)
+		err = task.transfers.push(record) // push数据后writ协程中才能读取到数据
 		return err == nil, err
 	})
 

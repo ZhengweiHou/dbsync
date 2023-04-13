@@ -8,15 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 //Server represents a server
-type Server struct {
+type SyncServer struct {
 	*http.Server
 	termination chan bool
 }
 
-func (s *Server) shutdown() {
+func (s *SyncServer) shutdown() { // 该方法未被调用？
 	<-s.termination
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -26,22 +28,26 @@ func (s *Server) shutdown() {
 }
 
 //StopOnSiginals stops server on siginal
-func (s *Server) StopOnSiginals(siginals ...os.Signal) {
+func (s *SyncServer) StopOnSiginals(siginals ...os.Signal) {
 	notification := make(chan os.Signal, 1)
 	signal.Notify(notification, siginals...)
-	<-notification
+	// var aa os.Signal
+	aa := <-notification
+	fmt.Println("=======stop")
+	logrus.Info(aa)
 	s.Stop()
 }
 
 //Stop stop server
-func (s *Server) Stop() {
+func (s *SyncServer) Stop() {
 	s.termination <- true
+	s.shutdown() // 手动调用关闭逻辑 add by: houzw
 }
 
 //NewServer creates a new server
-func NewServer(service Service, port int) *Server {
+func NewServer(service SyncService, port int) *SyncServer {
 	router := NewRouter(service)
-	return &Server{
+	return &SyncServer{
 		termination: make(chan bool, 1),
 		Server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),

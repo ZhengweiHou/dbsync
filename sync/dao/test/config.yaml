@@ -1,7 +1,7 @@
 datastore: db1
 config:
-  driverName: sqlite3
-  descriptor: ./test/db/mydb
+  driverName: mysql
+  descriptor: 'root:root@tcp(127.0.0.1:3306)/dbsynctest?parseTime=true'
 recreate: true
 scripts:
-  - URL: test/schema.sql
+  - URL: test/schema2.sql

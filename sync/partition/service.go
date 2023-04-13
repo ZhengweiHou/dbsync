@@ -15,12 +15,13 @@ import (
 	"dbsync/sync/transfer"
 	"errors"
 	"fmt"
+	"log"
 	"sync/atomic"
 	"time"
 )
 
 //Service represents partitin service
-type Service interface {
+type PartitionService interface {
 	//Build build sync partitions
 	Build(ctx *shared.Context) error
 
@@ -35,7 +36,7 @@ type Service interface {
 }
 
 //service represents partition
-type service struct {
+type partitionService struct {
 	Partitions *core.Partitions
 	Mutex      *shared.Mutex
 	*core.Comparator
@@ -51,39 +52,45 @@ type service struct {
 }
 
 //Close closes this service
-func (s *service) Close() error {
+func (s *partitionService) Close() error {
 	s.Partitions.Close()
 	return s.dao.Close()
 }
 
 //Build build partition sync status
-func (s *service) Build(ctx *shared.Context) (err error) {
+func (s *partitionService) Build(ctx *shared.Context) (err error) {
 	if !s.IsOptimized() {
-		return nil
+		return nil // strategy.force=true
 	}
+	log.Println("--buildBatched")
 	if err = s.buildBatched(ctx); err == nil {
+		log.Println("--buildIndividual")
 		err = s.buildIndividual(ctx)
 	}
 	return err
 }
 
-func (s *service) Sync(ctx *shared.Context) (err error) {
+func (s *partitionService) Sync(ctx *shared.Context) (err error) {
 	if s.Partitions == nil {
 		return fmt.Errorf("partitions were empy")
 	}
+	log.Println("--:Partition.SyncMode:", s.Partition.SyncMode)
 	switch s.Partition.SyncMode {
 	case shared.SyncModeBatch:
+		log.Println("--syncInBatches")
 		err = s.syncInBatches(ctx)
 	default:
+		log.Println("--syncIndividually")
 		err = s.syncIndividually(ctx, s.Partitions)
 	}
 	return err
 }
 
-func (s *service) syncInBatches(ctx *shared.Context) error {
+func (s *partitionService) syncInBatches(ctx *shared.Context) error {
 	batchMap := criteria.NewBatchMap(s.Partition.BatchSize)
 	_ = s.Partitions.Range(func(partition *core.Partition) error {
-		inSync, err := partition.Status.InSync()
+		inSync, err := partition.Status.InSync() // TODO 为什么？？？是true
+		log.Printf("inSync:%v\n", inSync)
 		if err != nil {
 			return err
 		}
@@ -119,12 +126,12 @@ func (s *service) syncInBatches(ctx *shared.Context) error {
 	return s.syncIndividually(ctx, partitions)
 }
 
-func (s *service) mergeBatch(ctx *shared.Context, partitions *core.Partitions) (err error) {
+func (s *partitionService) mergeBatch(ctx *shared.Context, partitions *core.Partitions) (err error) {
 	transferable := partitions.BatchTransferable()
 	return s.Merger.Merge(ctx, transferable)
 }
 
-func (s *service) onSyncDone(ctx *shared.Context, partitions *core.Partitions) (err error) {
+func (s *partitionService) onSyncDone(ctx *shared.Context, partitions *core.Partitions) (err error) {
 	isBatched := s.Partition.SyncMode == shared.SyncModeBatch
 	if isBatched {
 		err = s.mergeBatch(ctx, partitions)
@@ -135,9 +142,10 @@ func (s *service) onSyncDone(ctx *shared.Context, partitions *core.Partitions) (
 	return err
 }
 
-func (s *service) syncIndividually(ctx *shared.Context, partitions *core.Partitions) (err error) {
+func (s *partitionService) syncIndividually(ctx *shared.Context, partitions *core.Partitions) (err error) {
 	isChunked := s.Chunk.Size > 0
 	isBatched := s.Partition.SyncMode == shared.SyncModeBatch
+	log.Println("---:isChunked:", isChunked, " isBatched:", isBatched)
 	defer func() {
 		if err == nil {
 			err = s.onSyncDone(ctx, partitions)
@@ -152,7 +160,10 @@ func (s *service) syncIndividually(ctx *shared.Context, partitions *core.Partiti
 	total := uint32(0)
 	inSync := uint32(0)
 	//This run with multi go routines
+	log.Println("---partitions.Range() 执行 syncPartition")
 	err = partitions.Range(func(partition *core.Partition) error {
+
+		log.Printf("----partitions.Range syncIndividually handler %v\n", partition.Status)
 		if partition.Status == nil {
 			return nil
 		}
@@ -178,10 +189,11 @@ func (s *service) syncIndividually(ctx *shared.Context, partitions *core.Partiti
 			return s.syncPartitionChunks(ctx, partition)
 		}
 
-
 		//Added retries
-		for i := 0;i< shared.MaxRetries;i++ {
-			if err = s.syncPartition(ctx, partition);err == nil {
+		for i := 0; i < shared.MaxRetries; i++ {
+
+			log.Println("----syncPartition")
+			if err = s.syncPartition(ctx, partition); err == nil { // hzw 执行数据同步 发送请求到transf
 				return err
 			}
 			time.Sleep(time.Second)
@@ -192,7 +204,7 @@ func (s *service) syncIndividually(ctx *shared.Context, partitions *core.Partiti
 	return err
 }
 
-func (s *service) syncPartitionChunks(ctx *shared.Context, partition *core.Partition) (err error) {
+func (s *partitionService) syncPartitionChunks(ctx *shared.Context, partition *core.Partition) (err error) {
 	chunker := chunk.New(s.DbSync, partition, s.dao, s.Mutex, s.job, s.Transfer)
 	if err = chunker.Sync(ctx); err == nil {
 		err = partition.Error()
@@ -200,18 +212,21 @@ func (s *service) syncPartitionChunks(ctx *shared.Context, partition *core.Parti
 	return err
 }
 
-func (s *service) syncPartition(ctx *shared.Context, partition *core.Partition) (err error) {
+func (s *partitionService) syncPartition(ctx *shared.Context, partition *core.Partition) (err error) {
 	isBatchMode := s.Partition.SyncMode == shared.SyncModeBatch
 	if s.DirectAppend && partition.Transferable.Method == shared.SyncMethodInsert {
 		partition.Transferable.Suffix = ""
 		partition.IsDirect = true
 	}
-	request := s.Transfer.NewRequest(ctx, &partition.Transferable)
+	log.Println("s.Transfer.NewRequest")
+	request := s.Transfer.NewRequest(ctx, &partition.Transferable) // hzw 创建Transfer的请求
 	job := s.job.Get(ctx.ID)
 	if job == nil {
 		return fmt.Errorf("job was empty: %v", ctx.ID)
 	}
 	job.Add(&partition.Transferable)
+
+	log.Println("s.Transfer.Post")
 	if err = s.Transfer.Post(ctx, request, &partition.Transferable); err != nil {
 		return err
 	}
@@ -224,13 +239,17 @@ func (s *service) syncPartition(ctx *shared.Context, partition *core.Partition) 
 		transferable.OwnerSuffix = shared.TransientTableSuffix
 		transferable.Method = shared.SyncMethodInsert
 	}
-	err =  s.Merger.Merge(ctx, transferable)
+
+	log.Println("s.Merger.Merge")
+	err = s.Merger.Merge(ctx, transferable)
 	return err
 }
 
-func (s *service) buildBatched(ctx *shared.Context) (err error) {
+func (s *partitionService) buildBatched(ctx *shared.Context) (err error) {
+	log.Println("---Partitions.Criteria")
 	partitionsCriteria := s.Partitions.Criteria()
 	for i := range partitionsCriteria {
+		log.Println("---buildBatch")
 		if err = s.buildBatch(ctx, partitionsCriteria[i]); err != nil {
 			break
 		}
@@ -239,8 +258,9 @@ func (s *service) buildBatched(ctx *shared.Context) (err error) {
 }
 
 //build build status to all  partition, ideally al should be done in batch
-func (s *service) buildIndividual(ctx *shared.Context) (err error) {
+func (s *partitionService) buildIndividual(ctx *shared.Context) (err error) {
 	err = s.Partitions.Range(func(partition *core.Partition) error {
+		log.Println("----partitions.Range buildIndividual handler")
 		if partition.Status != nil {
 			return nil
 		}
@@ -251,13 +271,15 @@ func (s *service) buildIndividual(ctx *shared.Context) (err error) {
 		if partition.Status, err = s.Check(ctx, source, dest, partition.Filter); err == nil {
 			partition.Init()
 		}
+		log.Println("=build build status to partition status:", partition.Status)
+
 		return err
 	})
 	return err
 
 }
 
-func (s *service) buildBatch(ctx *shared.Context, filter map[string]interface{}) error {
+func (s *partitionService) buildBatch(ctx *shared.Context, filter map[string]interface{}) error {
 	isGlobalPartition := len(s.Partitions.Source) <= 1
 	syncOnlyNewID := s.Strategy.Diff.NewIDOnly && s.IDColumn() != ""
 	shouldUseNewIDGlobalFilter := isGlobalPartition && syncOnlyNewID
@@ -272,7 +294,8 @@ func (s *service) buildBatch(ctx *shared.Context, filter map[string]interface{})
 		}
 	}
 
-	sourceSignatures, err := s.dao.Signatures(ctx, contract.ResourceKindSource, filter)
+	log.Println("---- get sourceSignatures")
+	sourceSignatures, err := s.dao.Signatures(ctx, contract.ResourceKindSource, filter) // hzw 查询源数据聚合结果，可能会有多个记录吗？
 	if err != nil {
 		return err
 	}
@@ -280,14 +303,17 @@ func (s *service) buildBatch(ctx *shared.Context, filter map[string]interface{})
 		return nil //nothing to sync
 	}
 	if len(destSignatures) == 0 {
-		destSignatures, err = s.dao.Signatures(ctx, contract.ResourceKindDest, filter)
+
+		log.Println("---- get destSignatures")
+		destSignatures, err = s.dao.Signatures(ctx, contract.ResourceKindDest, filter) // hzw 查询目标数据聚合结果
 		if err != nil {
 			return err
 		}
 	}
-	core.AlignRecords(sourceSignatures, destSignatures)
+	core.AlignRecords(sourceSignatures, destSignatures) // 对齐记录值数据类型
 	dateLayout := s.Partitions.FindDateLayout(sourceSignatures[0])
-	index, err := s.match(ctx, sourceSignatures, destSignatures, dateLayout)
+	log.Println("---- 聚合结果匹配，产生core.Index")
+	index, err := s.match(ctx, sourceSignatures, destSignatures, dateLayout) // hzw 聚合结果匹配
 	if err != nil {
 		return err
 	}
@@ -295,7 +321,9 @@ func (s *service) buildBatch(ctx *shared.Context, filter map[string]interface{})
 		return err
 	}
 
-	for key := range index.Source {
+	log.Println("---- Index.source遍历 len(index.Source):", len(index.Source))
+	for key := range index.Source { // hzw source聚合结果集遍历(会有多个结果集？？)
+		log.Println("range index.Source key:", key)
 		source := index.Source[key]
 		dest := index.Dest[key]
 		partition := s.Partitions.Get(key)
@@ -313,16 +341,20 @@ func (s *service) buildBatch(ctx *shared.Context, filter map[string]interface{})
 			partition.Init()
 			continue
 		}
-		partition.Status, err = s.Check(ctx, source, dest, partition.Filter)
+		log.Printf("---- 聚合结果集比对检查,%v\n", partition.Filter)
+		partition.Status, err = s.Check(ctx, source, dest, partition.Filter) // hzw 聚合结果集比对检查
+		tmpInsync, _ := partition.Status.InSync()
+		log.Printf("---- 聚合结果集比对检查, filter:%v 结果:%v\n", partition.Filter, tmpInsync)
 		if err != nil {
 			return err
 		}
+		log.Println("---- partition.Init")
 		partition.Init()
 	}
 	return nil
 }
 
-func (s *service) validate(ctx *shared.Context, index *core.Index) error {
+func (s *partitionService) validate(ctx *shared.Context, index *core.Index) error {
 	for key := range index.Source {
 		source := index.Source[key]
 		dest := index.Dest[key]
@@ -334,16 +366,17 @@ func (s *service) validate(ctx *shared.Context, index *core.Index) error {
 
 }
 
-func (s *service) match(ctx *shared.Context, source, dest core.Records, dateLayout string) (*core.Index, error) {
-	result := core.NewIndex()
-	if len(source) == 1 {
-		result.Source[""] = source[0]
-		result.Dest[""] = nil
-		if len(dest) > 0 {
-			result.Dest[""] = dest[0]
-		}
-		return result, nil
-	}
+func (s *partitionService) match(ctx *shared.Context, source, dest core.Records, dateLayout string) (*core.Index, error) {
+	// result := core.NewIndex()
+	// if len(source) == 1 { // TODO houzw: 此处为什么这么控制？分片处理时有问题
+	// if len(source) == 9999 { // TODO 临时测试
+	// 	result.Source[""] = source[0]
+	// 	result.Dest[""] = nil
+	// 	if len(dest) > 0 {
+	// 		result.Dest[""] = dest[0]
+	// 	}
+	// 	return result, nil
+	// }
 	indexer := core.NewIndexer(s.Partition.Columns, dateLayout)
 	index := indexer.Index(source, dest)
 	if hasDest := len(index.Dest) > 0; hasDest {
@@ -363,14 +396,14 @@ func (s *service) match(ctx *shared.Context, source, dest core.Records, dateLayo
 	return index, nil
 }
 
-func (s *service) Init(ctx *shared.Context) error {
+func (s *partitionService) Init(ctx *shared.Context) error {
 	if s.Strategy == nil {
 		return fmt.Errorf("strategy was empty")
 	}
 	return s.loadPartitions(ctx)
 }
 
-func (s *service) fetchPartitionValues(ctx *shared.Context, kind contract.ResourceKind) ([]*core.Partition, error) {
+func (s *partitionService) fetchPartitionValues(ctx *shared.Context, kind contract.ResourceKind) ([]*core.Partition, error) {
 	var result = make([]*core.Partition, 0)
 	values, err := s.dao.Partitions(ctx, kind)
 	if err != nil {
@@ -382,7 +415,7 @@ func (s *service) fetchPartitionValues(ctx *shared.Context, kind contract.Resour
 	return result, nil
 }
 
-func (s *service) loadPartitions(ctx *shared.Context) (err error) {
+func (s *partitionService) loadPartitions(ctx *shared.Context) (err error) {
 	var source = make([]*core.Partition, 0)
 	var dest = make([]*core.Partition, 0)
 
@@ -424,7 +457,7 @@ func (s *service) loadPartitions(ctx *shared.Context) (err error) {
 	return nil
 }
 
-func (s *service) buildRemoved(source []*core.Partition, dest []*core.Partition) {
+func (s *partitionService) buildRemoved(source []*core.Partition, dest []*core.Partition) {
 	if s.DbSync.Dest.PartitionSQL == "" {
 		return
 	}
@@ -443,7 +476,7 @@ func (s *service) buildRemoved(source []*core.Partition, dest []*core.Partition)
 	}
 }
 
-func (s *service) removePartitions(ctx *shared.Context) error {
+func (s *partitionService) removePartitions(ctx *shared.Context) error {
 	if len(s.toRemove) == 0 {
 		return nil
 	}
@@ -458,8 +491,8 @@ func (s *service) removePartitions(ctx *shared.Context) error {
 	return nil
 }
 
-func newService(sync *contract.Sync, dao dao.Service, mutex *shared.Mutex, jobbService jobs.Service, historyService history.Service) *service {
-	return &service{
+func newService(sync *contract.Sync, dao dao.Service, mutex *shared.Mutex, jobbService jobs.Service, historyService history.Service) *partitionService {
+	return &partitionService{
 		dao:        dao,
 		Service:    diff.New(sync, dao),
 		Comparator: core.NewComparator(&sync.Diff),
@@ -474,6 +507,6 @@ func newService(sync *contract.Sync, dao dao.Service, mutex *shared.Mutex, jobbS
 }
 
 //New creates new partition service
-func New(sync *contract.Sync, dao dao.Service, mutex *shared.Mutex, jobService jobs.Service, historyService history.Service) Service {
+func New(sync *contract.Sync, dao dao.Service, mutex *shared.Mutex, jobService jobs.Service, historyService history.Service) PartitionService {
 	return newService(sync, dao, mutex, jobService, historyService)
 }

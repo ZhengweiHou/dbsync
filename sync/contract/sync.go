@@ -36,17 +36,17 @@ func (r *Sync) UseLock() bool {
 
 func (r *Sync) Clone() *Sync {
 	return &Sync{
-		Strategy: *r.Strategy.Clone(),
-		Transfer: r.Transfer,
-		Dest:     r.Dest,
-		Lock:     r.Lock,
-		Source:   r.Source,
-		Table:    r.Table,
-		Criteria: r.Criteria,
-		Schedule: r.Schedule,
-		Async:    r.Async,
+		Strategy:         *r.Strategy.Clone(),
+		Transfer:         r.Transfer,
+		Dest:             r.Dest,
+		Lock:             r.Lock,
+		Source:           r.Source,
+		Table:            r.Table,
+		Criteria:         r.Criteria,
+		Schedule:         r.Schedule,
+		Async:            r.Async,
 		UseCreateLikeDDL: r.UseCreateLikeDDL,
-		Debug:    r.Debug,
+		Debug:            r.Debug,
 	}
 }
 
@@ -75,7 +75,7 @@ func (r *Sync) Init() error {
 				r.MergeStyle = shared.DMLInsertOnDuplicateUpddate
 			case "sqlite3":
 				r.MergeStyle = shared.DMLInsertOrReplace
-			case "oci8", "ora":
+			case "oci8", "ora", "go_ibm_db":
 				r.MergeStyle = shared.DMLMergeInto
 			default:
 				r.MergeStyle = shared.DMLMerge
