@@ -1,0 +1,25 @@
+{
+    "Table": "events",
+	"IDColumns": [
+		"id"
+	],
+    "Source": {
+        "Descriptor": "root:root@tcp(127.0.0.1:3306)/dbsynctest?parseTime=true",
+        "DriverName": "mysql",
+        "Parameters": {
+            "dbname": "db1"
+        }
+    },
+	"Dest": {
+        "Descriptor": "root:root@tcp(127.0.0.1:3307)/dbsynctest?parseTime=true",
+		"DriverName": "mysql",
+		"Parameters": {
+			"dbname": "db2"
+		}
+	},
+	"Transfer": {
+    	"EndpointIP": "127.0.0.1:8082",
+	    "WriterThreads": 2,
+    	"BatchSize": 2048
+	}
+}

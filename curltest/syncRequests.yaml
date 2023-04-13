@@ -1,0 +1,45 @@
+#- Request
+id: hzwsynctest
+debug: true
+table: student
+idColumns: 
+  - id
+#columns:
+#  - modified
+#criteria:
+#  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
+    #  modified: '>NOW()-INTERVAL 100000 MINUTE'
+source: 
+#  pseudoColumns:
+#  - name: modified2
+#    expression: UNIX_TIMESTAMP(t.modified)
+#  credentials: mysql-e2e
+  descriptor: root:root@tcp(127.0.0.1:3306)/dbsynctest?parseTime=true
+  driverName: mysql
+  parameters: 
+    dbname: db1
+dest: 
+#  pseudoColumns:
+#  - name: modified2
+#    expression: UNIX_TIMESTAMP(t.modified)
+#  credentials: mysql-e2e
+  descriptor: root:root@tcp(127.0.0.1:3307)/dbsynctest?parseTime=true
+  driverName: mysql
+  parameters: 
+    dbname: db2
+
+#diff:
+#  depth: 1
+#  dateFormat: 'yyyy-MM-dd hh:mm:ss'
+#  columns:
+#    - name: event_type
+#      func: SUM
+#    - name: id
+#      func: SUM
+#    - name: modified2
+#      func: SUM
+
+transfer: 
+  endpointIP: 127.0.0.1:8082
+  writerThreads: 1
+  batchSize: 2048
