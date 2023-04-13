@@ -5,7 +5,7 @@ import (
 	"dbsync/sync/shared"
 	"dbsync/transfer"
 	"fmt"
-	_ "github.com/alexbrainman/odbc"
+	//	_ "github.com/alexbrainman/odbc"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/viant/assertly"
@@ -13,7 +13,7 @@ import (
 	"github.com/viant/toolbox"
 	"path"
 
-	//_ "github.com/mattn/go-oci8"
+	//	//_ "github.com/mattn/go-oci8"
 	"github.com/stretchr/testify/assert"
 	_ "github.com/viant/bgc"
 	"log"
