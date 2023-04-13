@@ -75,7 +75,7 @@ func (r *Sync) Init() error {
 				r.MergeStyle = shared.DMLInsertOnDuplicateUpddate
 			case "sqlite3":
 				r.MergeStyle = shared.DMLInsertOrReplace
-			case "oci8", "ora":
+			case "oci8", "ora", "go_ibm_db":
 				r.MergeStyle = shared.DMLMergeInto
 			default:
 				r.MergeStyle = shared.DMLMerge
