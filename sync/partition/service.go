@@ -178,10 +178,9 @@ func (s *service) syncIndividually(ctx *shared.Context, partitions *core.Partiti
 			return s.syncPartitionChunks(ctx, partition)
 		}
 
-
 		//Added retries
-		for i := 0;i< shared.MaxRetries;i++ {
-			if err = s.syncPartition(ctx, partition);err == nil {
+		for i := 0; i < shared.MaxRetries; i++ {
+			if err = s.syncPartition(ctx, partition); err == nil {
 				return err
 			}
 			time.Sleep(time.Second)
@@ -224,7 +223,7 @@ func (s *service) syncPartition(ctx *shared.Context, partition *core.Partition) 
 		transferable.OwnerSuffix = shared.TransientTableSuffix
 		transferable.Method = shared.SyncMethodInsert
 	}
-	err =  s.Merger.Merge(ctx, transferable)
+	err = s.Merger.Merge(ctx, transferable)
 	return err
 }
 

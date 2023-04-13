@@ -118,7 +118,6 @@ func (s *service) RecreateTransientTable(ctx *shared.Context, suffix string) (er
 	return s.CreateTransientTable(ctx, suffix)
 }
 
-
 //CreateTransientTable create transient table
 func (s *service) CreateTransientTable(ctx *shared.Context, suffix string) (err error) {
 	if suffix == "" {
@@ -132,8 +131,8 @@ func (s *service) CreateTransientTable(ctx *shared.Context, suffix string) (err 
 	}
 	DDL := s.builder.DDLFromSelect(suffix)
 	if err = s.ExecSQL(ctx, DDL); err == nil {
-			return nil
-		}
+		return nil
+	}
 	//Fallback to dialect DDL
 	DDL = s.builder.DDL(suffix)
 	//if s.Transfer.TempDatabase != "" {
@@ -228,8 +227,6 @@ func (s *service) ExecSQL(ctx *shared.Context, SQL string) (err error) {
 	return s.executeInBackground(err, SQL, ctx)
 }
 
-
-
 func (s *service) executeInBackground(err error, SQL string, ctx *shared.Context) error {
 	var conn dsc.Connection
 	conn, err = s.dest.DB.ConnectionProvider().Get()
@@ -253,7 +250,6 @@ func (s *service) executeInBackground(err error, SQL string, ctx *shared.Context
 	}
 	return err
 }
-
 
 //DbName returns db name for supplied source kind
 func (s *service) DbName(ctx *shared.Context, kind contract.ResourceKind) (string, error) {

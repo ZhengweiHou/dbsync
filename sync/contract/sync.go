@@ -36,17 +36,17 @@ func (r *Sync) UseLock() bool {
 
 func (r *Sync) Clone() *Sync {
 	return &Sync{
-		Strategy: *r.Strategy.Clone(),
-		Transfer: r.Transfer,
-		Dest:     r.Dest,
-		Lock:     r.Lock,
-		Source:   r.Source,
-		Table:    r.Table,
-		Criteria: r.Criteria,
-		Schedule: r.Schedule,
-		Async:    r.Async,
+		Strategy:         *r.Strategy.Clone(),
+		Transfer:         r.Transfer,
+		Dest:             r.Dest,
+		Lock:             r.Lock,
+		Source:           r.Source,
+		Table:            r.Table,
+		Criteria:         r.Criteria,
+		Schedule:         r.Schedule,
+		Async:            r.Async,
 		UseCreateLikeDDL: r.UseCreateLikeDDL,
-		Debug:    r.Debug,
+		Debug:            r.Debug,
 	}
 }
 

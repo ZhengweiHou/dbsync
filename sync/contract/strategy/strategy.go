@@ -6,31 +6,31 @@ import (
 
 //Strategy represents a sync strategy
 type Strategy struct {
-	Chunk         Chunk
-	IDColumns     []string
-	Columns       []string
-	Diff          Diff
-	DirectAppend  bool   `description:"if this flag is set all insert/append data is stream directly to the dest table"`
-	MergeStyle    string `description:"supported value:merge,insertReplace,insertUpdate,insertDelete"`
-	Partition     Partition
-	AppendOnly    bool `description:"if set instead of merge, insert will be used"`
+	Chunk            Chunk
+	IDColumns        []string
+	Columns          []string
+	Diff             Diff
+	DirectAppend     bool   `description:"if this flag is set all insert/append data is stream directly to the dest table"`
+	MergeStyle       string `description:"supported value:merge,insertReplace,insertUpdate,insertDelete"`
+	Partition        Partition
+	AppendOnly       bool `description:"if set instead of merge, insert will be used"`
 	AppendUpdateOnly bool `description:"if set instead of merge, insert will be used"`
-	Force         bool `description:"if set skip checks if values in sync"`
+	Force            bool `description:"if set skip checks if values in sync"`
 }
 
 //Clone clones strategy
 func (s *Strategy) Clone() *Strategy {
 	return &Strategy{
-		Chunk:        s.Chunk,
-		IDColumns:    s.IDColumns,
-		Diff:         s.Diff,
-		DirectAppend: s.DirectAppend,
-		Columns:      s.Columns,
-		MergeStyle:   s.MergeStyle,
-		Partition:    s.Partition,
-		AppendOnly:   s.AppendOnly,
-		AppendUpdateOnly:s.AppendUpdateOnly,
-		Force:        s.Force,
+		Chunk:            s.Chunk,
+		IDColumns:        s.IDColumns,
+		Diff:             s.Diff,
+		DirectAppend:     s.DirectAppend,
+		Columns:          s.Columns,
+		MergeStyle:       s.MergeStyle,
+		Partition:        s.Partition,
+		AppendOnly:       s.AppendOnly,
+		AppendUpdateOnly: s.AppendUpdateOnly,
+		Force:            s.Force,
 	}
 }
 
