@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"log"
 	"time"
 )
@@ -21,7 +22,8 @@ func (c *Context) Log(v ...interface{}) {
 		if len(v) > 0 {
 			v[0] = fmt.Sprintf("[%v] %v", c.ID, v[0])
 		}
-		log.Print(v...)
+		// log.Print(v...)
+		logrus.Debug(v...)
 	}
 }
 
@@ -31,4 +33,10 @@ func NewContext(ID string, debug bool) *Context {
 		ID:    ID,
 		Debug: debug,
 	}
+}
+
+func testhehe() {
+	logrus.Print("hello")
+	log.Print("hello")
+	fmt.Print()
 }
