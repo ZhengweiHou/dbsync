@@ -162,6 +162,11 @@ func (r *Sync) Validate() error {
 	if err := r.Dest.Validate(); err != nil {
 		return errors.Wrap(err, "invalid dest")
 	}
+
+	if r.Source.PartitionSQL != "" && r.Strategy.Force {
+		return fmt.Errorf("Partition mode The force mode is prohibited")
+	}
+
 	return nil
 }
 
