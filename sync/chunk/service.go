@@ -25,12 +25,12 @@ type Service interface {
 
 type service struct {
 	*strategy.Strategy
-	diff.Service
-	job       jobs.Service
+	diff.DiffService
+	job       jobs.JobService
 	partition *core.Partition
-	dao       dao.Service
-	Merger    merge.Service
-	Transfer  transfer.Service
+	dao       dao.DaoService
+	Merger    merge.MergeService
+	Transfer  transfer.TransferService
 }
 
 func (s *service) transferAndMerge(ctx *shared.Context, chunk *core.Chunk) (err error) {
@@ -214,14 +214,14 @@ func (s *service) buildChunk(ctx *shared.Context, status *core.Status, filter ma
 }
 
 //New creates a nwe chunk service
-func New(sync *contract.Sync, partition *core.Partition, dao dao.Service, mutex *shared.Mutex, jobService jobs.Service, transferService transfer.Service) Service {
+func New(sync *contract.Sync, partition *core.Partition, dao dao.DaoService, mutex *shared.Mutex, jobService jobs.JobService, transferService transfer.TransferService) Service {
 	return &service{
-		partition: partition,
-		Service:   diff.New(sync, dao),
-		dao:       dao,
-		Strategy:  &sync.Strategy,
-		Merger:    merge.New(sync, dao, mutex),
-		Transfer:  transferService,
-		job:       jobService,
+		partition:   partition,
+		DiffService: diff.New(sync, dao),
+		dao:         dao,
+		Strategy:    &sync.Strategy,
+		Merger:      merge.New(sync, dao, mutex),
+		Transfer:    transferService,
+		job:         jobService,
 	}
 }

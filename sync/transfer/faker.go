@@ -6,7 +6,7 @@ import (
 )
 
 type faker struct {
-	Service
+	TransferService
 	transferred int
 	err         error
 }
@@ -20,10 +20,10 @@ func (f *faker) Post(ctx *shared.Context, request *Request, transferable *core.T
 }
 
 //NewFaker returns new post faker
-func NewFaker(service Service, transferred int, err error) Service {
+func NewFaker(service TransferService, transferred int, err error) TransferService {
 	return &faker{
-		Service:     service,
-		transferred: transferred,
-		err:         err,
+		TransferService: service,
+		transferred:     transferred,
+		err:             err,
 	}
 }

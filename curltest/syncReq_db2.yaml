@@ -1,25 +1,46 @@
 #- Request
 id: hzwsynctest
+
+# =Sync=
 debug: true
-table: STUDENT
+# table: STUDENT
+# criteria:
+#  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
+# async: true
+# DMLTimeout: 3
+UseCreateLikeDDL: false
+
+# =Strategy=
+# chunk:
+# diff:
+# appendOnly: true
+# appendUpdateOnly: true
+# directAppend: true # 是否直接插入目标表
+# force: true # 强制同步
 idColumns: 
   - id
-
-#criteria:
-#  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
-    #  modified: '>NOW()-INTERVAL 100000 MINUTE'
+# partition:
+#   threads: 3
+#   SyncMode: batch
+#   columns:
+#     - AGE
+#     - GRADES
 mergeStyle: mergeInto
+
+
+
 source: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  parameters: 
-    dbname: db1
+  # parameters: 
+  #   dbname: db1
+  table: STUDENT
 #  table: student
 dest: 
-  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50001;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  parameters: 
-    dbname: db2
+  # parameters: 
+  #   dbname: db2
   table: STUDENT2
 
 transfer: 

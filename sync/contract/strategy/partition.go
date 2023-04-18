@@ -5,7 +5,7 @@ import "dbsync/sync/shared"
 const defaultPartitionThreads = 2
 
 //PartitionStrategy represents partition info
-type Partition struct {
+type PartitionConf struct {
 	ProviderSQL string // Deprecated: use Source.PartitionSQL instead
 	Columns     []string
 	Threads     int
@@ -14,7 +14,7 @@ type Partition struct {
 }
 
 //MaxThreads returns batch size for max elements
-func (p *Partition) MaxThreads(max int) int {
+func (p *PartitionConf) MaxThreads(max int) int {
 	threads := p.Threads
 	if max < threads {
 		threads = max
@@ -23,7 +23,7 @@ func (p *Partition) MaxThreads(max int) int {
 }
 
 //Init initializes partition
-func (p *Partition) Init() error {
+func (p *PartitionConf) Init() error {
 	if len(p.Columns) == 0 {
 		p.Columns = make([]string, 0)
 	}

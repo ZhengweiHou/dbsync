@@ -11,7 +11,7 @@ import (
 )
 
 //Service represents a diff service
-type Service interface {
+type DiffService interface {
 	//Check compares source and dest record and returns sync status
 	Check(ctx *shared.Context, source, dest core.Record, filter map[string]interface{}) (*core.Status, error)
 
@@ -26,21 +26,21 @@ type Service interface {
 }
 
 //service finds source and dest difference status
-type service struct {
-	dao dao.Service
+type diffService struct {
+	dao dao.DaoService
 	*contract.Sync
 	*core.Comparator
 }
 
 //Check checks source and dest difference status
-func (d *service) Check(ctx *shared.Context, source, dest core.Record, filter map[string]interface{}) (*core.Status, error) {
+func (d *diffService) Check(ctx *shared.Context, source, dest core.Record, filter map[string]interface{}) (*core.Status, error) {
 	result := &core.Status{}
 	err := d.UpdateStatus(ctx, result, source, dest, filter, true)
 	return result, err
 }
 
 //Fetch reads source and dest signature records for supplied filter
-func (d *service) Fetch(ctx *shared.Context, filter map[string]interface{}) (source, dest core.Record, err error) {
+func (d *diffService) Fetch(ctx *shared.Context, filter map[string]interface{}) (source, dest core.Record, err error) {
 
 	if d.Diff.NewIDOnly && d.IDColumn() != "" {
 		key := d.IDColumn()
@@ -72,7 +72,7 @@ func (d *service) Fetch(ctx *shared.Context, filter map[string]interface{}) (sou
 }
 
 //Fetch reads source and dest signature records for supplied filter
-func (d *service) FetchAll(ctx *shared.Context, filter map[string]interface{}) (source, dest core.Records, err error) {
+func (d *diffService) FetchAll(ctx *shared.Context, filter map[string]interface{}) (source, dest core.Records, err error) {
 	if source, err = d.dao.Signatures(ctx, contract.ResourceKindSource, filter); err != nil {
 		return nil, nil, err
 	}
@@ -80,7 +80,7 @@ func (d *service) FetchAll(ctx *shared.Context, filter map[string]interface{}) (
 	return source, dest, err
 }
 
-func (d *service) UpdateStatus(ctx *shared.Context, status *core.Status, source, dest core.Record, filter map[string]interface{}, narrowInSyncSubset bool) (err error) {
+func (d *diffService) UpdateStatus(ctx *shared.Context, status *core.Status, source, dest core.Record, filter map[string]interface{}, narrowInSyncSubset bool) (err error) {
 	inSync := false
 	defer func() {
 		ctx.Log(fmt.Sprintf("(%v): in sync: %v, %v\n", filter, inSync, status.Method))
@@ -145,7 +145,7 @@ func (d *service) UpdateStatus(ctx *shared.Context, status *core.Status, source,
 	return err
 }
 
-func (d *service) isInSync(ctx *shared.Context, filter map[string]interface{}) bool {
+func (d *diffService) isInSync(ctx *shared.Context, filter map[string]interface{}) bool {
 	candidate := &core.Status{}
 
 	if source, dest, err := d.Fetch(ctx, filter); err == nil {
@@ -157,7 +157,7 @@ func (d *service) isInSync(ctx *shared.Context, filter map[string]interface{}) b
 	return false
 }
 
-func (d *service) findMaxIDInSync(ctx *shared.Context, idRange *core.IDRange, filter map[string]interface{}) (int, error) {
+func (d *diffService) findMaxIDInSync(ctx *shared.Context, idRange *core.IDRange, filter map[string]interface{}) (int, error) {
 	filter = shared.CloneMap(filter)
 	inSyncDestMaxID := 0
 	candidateID := idRange.Next(false)
@@ -176,6 +176,6 @@ func (d *service) findMaxIDInSync(ctx *shared.Context, idRange *core.IDRange, fi
 }
 
 //New creates a new service computing signature difference
-func New(sync *contract.Sync, dao dao.Service) Service {
-	return &service{Sync: sync, dao: dao, Comparator: core.NewComparator(&sync.Diff)}
+func New(sync *contract.Sync, dao dao.DaoService) DiffService {
+	return &diffService{Sync: sync, dao: dao, Comparator: core.NewComparator(&sync.Diff)}
 }

@@ -3,7 +3,7 @@ package jobs
 import "dbsync/sync/core"
 
 //Service represents a job service
-type Service interface {
+type JobService interface {
 	//List lists all active or recently active jobs
 	List(request *ListRequest) *ListResponse
 	//Create creates a new job
@@ -12,12 +12,12 @@ type Service interface {
 	Get(ID string) *core.Job
 }
 
-type service struct {
+type jobService struct {
 	registry *registry
 }
 
 //Get returns job by ID or nil
-func (s *service) Get(ID string) *core.Job {
+func (s *jobService) Get(ID string) *core.Job {
 	jobs := s.registry.list()
 	for i := range jobs {
 		if jobs[i].ID == ID {
@@ -30,7 +30,7 @@ func (s *service) Get(ID string) *core.Job {
 }
 
 //List lists all jobs
-func (s *service) List(request *ListRequest) *ListResponse {
+func (s *jobService) List(request *ListRequest) *ListResponse {
 	jobs := s.registry.list()
 	if len(request.IDs) == 0 {
 		return &ListResponse{
@@ -55,15 +55,15 @@ func (s *service) List(request *ListRequest) *ListResponse {
 }
 
 //Create creates a new job
-func (s *service) Create(ID string) *core.Job {
+func (s *jobService) Create(ID string) *core.Job {
 	job := core.NewJob(ID)
 	s.registry.add(job)
 	return job
 }
 
 //New create a job service
-func New() Service {
-	return &service{
+func New() JobService {
+	return &jobService{
 		registry: newRegistry(),
 	}
 }

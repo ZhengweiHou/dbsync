@@ -64,8 +64,8 @@ func (r *Sync) Init() error {
 		return err
 	}
 
-	if r.Partition.ProviderSQL != "" {
-		r.Source.PartitionSQL = r.Partition.ProviderSQL
+	if r.PartitionConf.ProviderSQL != "" {
+		r.Source.PartitionSQL = r.PartitionConf.ProviderSQL
 	}
 
 	if r.MergeStyle == "" {
@@ -97,11 +97,11 @@ func (r *Sync) Init() error {
 			r.Source.Criteria = r.Criteria
 		}
 	}
-	if r.Diff.BatchSize > 0 && r.Partition.BatchSize == 0 {
-		r.Partition.BatchSize = r.Diff.BatchSize
+	if r.Diff.BatchSize > 0 && r.PartitionConf.BatchSize == 0 {
+		r.PartitionConf.BatchSize = r.Diff.BatchSize
 	}
-	if r.Partition.BatchSize == 0 {
-		r.Partition.BatchSize = defaultPartitionBatchSize
+	if r.PartitionConf.BatchSize == 0 {
+		r.PartitionConf.BatchSize = defaultPartitionBatchSize
 	}
 
 	if r.Table != "" {
@@ -117,7 +117,7 @@ func (r *Sync) Init() error {
 			return r.Schedule.At.Init()
 		}
 	}
-	if err = r.Partition.Init(); err == nil {
+	if err = r.PartitionConf.Init(); err == nil {
 		err = r.Diff.Init()
 	}
 	return err
@@ -135,7 +135,7 @@ func (r *Sync) Validate() error {
 		return fmt.Errorf("dest table was empty")
 	}
 	if r.Source.PartitionSQL != "" {
-		if len(r.Partition.Columns) == 0 {
+		if len(r.PartitionConf.Columns) == 0 {
 			return fmt.Errorf("partition.columns were empty")
 		}
 	}

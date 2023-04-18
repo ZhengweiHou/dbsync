@@ -24,15 +24,15 @@ type Service interface {
 	//ListJobs list active jobs
 	Scheduler() scheduler.Service
 	//Jobs job service
-	Jobs() jobs.Service
+	Jobs() jobs.JobService
 	//History returns history service
-	History() history.Service
+	History() history.HistoryService
 }
 
 type service struct {
 	*shared.Config
-	jobs      jobs.Service
-	history   history.Service
+	jobs      jobs.JobService
+	history   history.HistoryService
 	scheduler scheduler.Service
 	mutex     *shared.Mutex
 }
@@ -41,11 +41,11 @@ func (s *service) Scheduler() scheduler.Service {
 	return s.scheduler
 }
 
-func (s *service) Jobs() jobs.Service {
+func (s *service) Jobs() jobs.JobService {
 	return s.jobs
 }
 
-func (s *service) History() history.Service {
+func (s *service) History() history.HistoryService {
 	return s.history
 }
 
@@ -124,11 +124,11 @@ func (s *service) runSyncJob(ctx *shared.Context, job *core.Job, request *Reques
 		s.onJobDone(ctx, job, response, err)
 	}()
 	dbSync := request.Sync
-	service := dao.New(dbSync)
-	if err = service.Init(ctx); err != nil {
+	daoservice := dao.New(dbSync)
+	if err = daoservice.Init(ctx); err != nil {
 		return err
 	}
-	partitionService := partition.New(dbSync, service, shared.NewMutex(), s.jobs, s.history)
+	partitionService := partition.New(dbSync, daoservice, shared.NewMutex(), s.jobs, s.history)
 	defer func() {
 		_ = partitionService.Close()
 	}()

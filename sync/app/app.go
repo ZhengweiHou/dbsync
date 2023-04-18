@@ -71,7 +71,7 @@ func initLog() error {
 	}
 	// logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetFormatter(&logrus.TextFormatter{
-		// ForceColors: true,
+		ForceColors: true,
 		// DisableColors: true,
 		FullTimestamp: true,
 	})

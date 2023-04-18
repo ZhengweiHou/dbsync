@@ -12,7 +12,7 @@ type Strategy struct {
 	Diff             Diff
 	DirectAppend     bool   `description:"if this flag is set all insert/append data is stream directly to the dest table"`
 	MergeStyle       string `description:"supported value:merge,insertReplace,insertUpdate,insertDelete"`
-	Partition        Partition
+	PartitionConf    PartitionConf
 	AppendOnly       bool `description:"if set instead of merge, insert will be used"`
 	AppendUpdateOnly bool `description:"if set instead of merge, insert will be used"`
 	Force            bool `description:"if set skip checks if values in sync"`
@@ -27,7 +27,7 @@ func (s *Strategy) Clone() *Strategy {
 		DirectAppend:     s.DirectAppend,
 		Columns:          s.Columns,
 		MergeStyle:       s.MergeStyle,
-		Partition:        s.Partition,
+		PartitionConf:    s.PartitionConf,
 		AppendOnly:       s.AppendOnly,
 		AppendUpdateOnly: s.AppendUpdateOnly,
 		Force:            s.Force,
@@ -46,7 +46,7 @@ func (s *Strategy) IDColumn() string {
 func (s *Strategy) Init() error {
 	err := s.Diff.Init()
 	if err == nil {
-		if err = s.Partition.Init(); err == nil {
+		if err = s.PartitionConf.Init(); err == nil {
 			err = s.Chunk.Init()
 		}
 	}
@@ -65,9 +65,9 @@ func (r *Strategy) UseUpperCaseSQL() {
 			r.IDColumns[i] = strings.ToUpper(v)
 		}
 	}
-	if len(r.Partition.Columns) > 0 {
-		for i, v := range r.Partition.Columns {
-			r.Partition.Columns[i] = strings.ToUpper(v)
+	if len(r.PartitionConf.Columns) > 0 {
+		for i, v := range r.PartitionConf.Columns {
+			r.PartitionConf.Columns[i] = strings.ToUpper(v)
 		}
 	}
 	if len(r.Diff.Columns) > 0 {

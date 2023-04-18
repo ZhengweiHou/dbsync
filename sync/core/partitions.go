@@ -116,7 +116,7 @@ func (p *Partitions) Range(handler func(partition *Partition) error) error {
 
 //Validate checks if partition value for Source and dest are valid
 func (p *Partitions) Validate(ctx *shared.Context, comparator *Comparator, source, dest Record) error {
-	keys := p.Partition.Columns
+	keys := p.PartitionConf.Columns
 	if len(keys) == 0 {
 		return nil
 	}
@@ -137,7 +137,7 @@ func (p *Partitions) Validate(ctx *shared.Context, comparator *Comparator, sourc
 
 //Key returns partition Index key for the supplied record
 func (p *Partitions) Key(record Record) string {
-	return record.Index(p.Strategy.Partition.Columns)
+	return record.Index(p.Strategy.PartitionConf.Columns)
 }
 
 //Keys returns all partition keys
@@ -175,9 +175,9 @@ func NewPartitions(source []*Partition, strategy *strategy.Strategy) *Partitions
 		partition := NewPartition(strategy, Record{})
 		source = []*Partition{partition}
 	}
-	threads := strategy.Partition.Threads
+	threads := strategy.PartitionConf.Threads
 	if threads == 0 {
-		strategy.Partition.Threads = 1
+		strategy.PartitionConf.Threads = 1
 		threads = 1
 	}
 	return &Partitions{

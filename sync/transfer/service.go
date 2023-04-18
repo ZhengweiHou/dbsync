@@ -23,20 +23,20 @@ const (
 )
 
 //Service represents transfer service
-type Service interface {
+type TransferService interface {
 	//NewRequest creates a new transfer request
 	NewRequest(ctx *shared.Context, transferable *core.Transferable) *Request
 	//Post submit transfer request
 	Post(ctx *shared.Context, request *Request, transferable *core.Transferable) error
 }
 
-type service struct {
+type transferService struct {
 	*contract.Sync
-	dao dao.Service
+	dao dao.DaoService
 	*sql.Builder
 }
 
-func (s *service) destConfig(ctx *shared.Context) *dsc.Config {
+func (s *transferService) destConfig(ctx *shared.Context) *dsc.Config {
 	result := s.Dest.Config.Clone()
 	if s.Transfer.TempDatabase == "" {
 		return result
@@ -60,7 +60,7 @@ func (s *service) destConfig(ctx *shared.Context) *dsc.Config {
 }
 
 //NewRequest returns new transfer request
-func (s *service) NewRequest(ctx *shared.Context, transferable *core.Transferable) *Request {
+func (s *transferService) NewRequest(ctx *shared.Context, transferable *core.Transferable) *Request {
 	DQL := s.Builder.DQL("", s.Source, transferable.Filter, false)
 	suffix := transferable.Suffix
 	if transferable.IsDirect {
@@ -86,7 +86,7 @@ func (s *service) NewRequest(ctx *shared.Context, transferable *core.Transferabl
 	}
 }
 
-func (s *service) waitForSync(ctx *shared.Context, syncTaskID int, transferable *core.Transferable, seq int) error {
+func (s *transferService) waitForSync(ctx *shared.Context, syncTaskID int, transferable *core.Transferable, seq int) error {
 	statusURL := fmt.Sprintf(transferStatusURL, s.Transfer.EndpointIP)
 	URL := statusURL + fmt.Sprintf("%d", syncTaskID)
 	response := &Response{Status: shared.StatusUnknown}
@@ -128,7 +128,7 @@ func (s *service) waitForSync(ctx *shared.Context, syncTaskID int, transferable 
 var seq = uint32(0)
 
 //Post post transfer job
-func (s *service) Post(ctx *shared.Context, request *Request, transferable *core.Transferable) (err error) {
+func (s *transferService) Post(ctx *shared.Context, request *Request, transferable *core.Transferable) (err error) {
 	transferable.DQL = request.Source.Query
 	if !transferable.IsDirect {
 		if err = s.dao.RecreateTransientTable(ctx, transferable.Suffix); err != nil {
@@ -161,7 +161,7 @@ func (s *service) Post(ctx *shared.Context, request *Request, transferable *core
 	return err
 }
 
-func (s *service) post(ctx *shared.Context, request *Request, transferable *core.Transferable, seq uint32) (err error) {
+func (s *transferService) post(ctx *shared.Context, request *Request, transferable *core.Transferable, seq uint32) (err error) {
 	targetURL := fmt.Sprintf(transferURL, s.Transfer.EndpointIP)
 	ctx.Log(fmt.Sprintf("post: %v\n", targetURL))
 	if ctx.Debug {
@@ -184,8 +184,8 @@ func (s *service) post(ctx *shared.Context, request *Request, transferable *core
 	return s.waitForSync(ctx, response.TaskID, transferable, int(seq))
 }
 
-func newService(sync *contract.Sync, dao dao.Service) *service {
-	return &service{
+func newService(sync *contract.Sync, dao dao.DaoService) *transferService {
+	return &transferService{
 		Sync:    sync,
 		dao:     dao,
 		Builder: dao.Builder(),
@@ -193,6 +193,6 @@ func newService(sync *contract.Sync, dao dao.Service) *service {
 }
 
 //New creates a transfer service
-func New(sync *contract.Sync, dao dao.Service) Service {
+func New(sync *contract.Sync, dao dao.DaoService) TransferService {
 	return newService(sync, dao)
 }

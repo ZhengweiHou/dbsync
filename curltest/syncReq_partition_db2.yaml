@@ -2,9 +2,10 @@
 id: hzwsynctest
 debug: true
 table: STUDENT
+force: false # 强制同步 分片模式不可以使用force模式
 idColumns: 
   - id
-partition:
+partitionconf:
   threads: 3
   SyncMode: batch
   columns:
@@ -26,7 +27,7 @@ source:
   partitionSQL: SELECT AGE,GRADES  FROM STUDENT  GROUP BY age,GRADES  ORDER BY age,GRADES
 #  table: student
 dest: 
-  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50001;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
   parameters: 
     dbname: db2

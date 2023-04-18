@@ -65,10 +65,18 @@ func (b *Builder) QueryTable(suffix string, resource *contract.Resource) string 
 //DDLFromSelect returns transient table DDL for supplied suffix
 func (b *Builder) DDLFromSelect(suffix string) string {
 	suffix = normalizeTableName(suffix)
+	ddltemp := ""
 	if b.useCrateLikeDDL {
-		return fmt.Sprintf("CREATE TABLE %v LIKE %v", b.Table(suffix), b.Table(""))
+		ddltemp = "CREATE TABLE %v LIKE %v"
+	} else if b.dest.DriverName == "go_ibm_db" { // db2 create table from select dialect
+		ddltemp = "CREATE TABLE %v AS (select *  from %v WHERE 1 = 0) definition only"
+	} else {
+		ddltemp = "CREATE TABLE %v AS SELECT * FROM %v WHERE 1 = 0"
 	}
-	return fmt.Sprintf("CREATE TABLE %v AS SELECT * FROM %v WHERE 1 = 0", b.Table(suffix), b.Table(""))
+
+	return fmt.Sprintf(ddltemp, b.Table(suffix), b.Table(""))
+	// return fmt.Sprintf("CREATE TABLE %v AS SELECT * FROM %v WHERE 1 = 0", b.Table(suffix), b.Table(""))
+
 }
 
 //DDL returns transient table DDL for supplied suffix
@@ -287,7 +295,7 @@ func (b *Builder) partitionDQL(criteria map[string]interface{}, resource *contra
 	var groupBy = make([]string, 0)
 	var i = 1
 	var dimension = make(map[string]bool)
-	for _, partition := range b.Partition.Columns {
+	for _, partition := range b.PartitionConf.Columns {
 		if _, has := dimension[partition]; has {
 			continue
 		}

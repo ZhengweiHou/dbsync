@@ -78,7 +78,7 @@ func (p *Partition) AddChunk(chunk *Chunk) {
 
 func (p *Partition) buildSuffix() string {
 	suffix := shared.TransientTableSuffix
-	columns := p.Partition.Columns
+	columns := p.PartitionConf.Columns
 	var suffixValue = make([]string, 0)
 	if len(columns) > 0 {
 		for _, column := range columns {
