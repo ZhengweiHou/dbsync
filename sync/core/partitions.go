@@ -77,10 +77,14 @@ func (p *Partitions) BatchTransferable() *Transferable {
 //Criteria returns partitions criteria
 func (p *Partitions) Criteria() []map[string]interface{} {
 	batch := criteria.NewBatch(p.Strategy.Diff.BatchSize)
-	_ = p.Range(func(partition *Partition) error {
-		batch.Add(partition.Filter)
-		return nil
-	})
+	// _ = p.Range(func(partition *Partition) error { // Range 内部为协程并发，batch
+	// 	batch.Add(partition.Filter)
+	// 	return nil
+	// })
+	partitions := p.Source
+	for i := range partitions {
+		batch.Add(partitions[i].Filter)
+	}
 	result := batch.Get()
 	if len(result) == 0 {
 		result = append(result, map[string]interface{}{})
