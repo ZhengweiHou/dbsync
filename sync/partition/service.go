@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 //Service represents partitin service
@@ -127,11 +129,15 @@ func (s *partitionService) mergeBatch(ctx *shared.Context, partitions *core.Part
 func (s *partitionService) onSyncDone(ctx *shared.Context, partitions *core.Partitions) (err error) {
 	isBatched := s.PartitionConf.SyncMode == shared.SyncModeBatch
 	if isBatched {
-		err = s.mergeBatch(ctx, partitions)
+		err = s.mergeBatch(ctx, partitions) // batch模式下最终目标表转移
+	}
+	if s.SaveIdsTable { // 保存指定Id字段小表数据
+		err = s.saveIdsTable(ctx)
 	}
 	if err == nil {
 		err = s.removePartitions(ctx)
 	}
+
 	return err
 }
 
@@ -414,7 +420,7 @@ func (s *partitionService) loadPartitions(ctx *shared.Context) (err error) {
 		if s.DbSync.AppendOnly {
 			partition.Status.Method = shared.SyncMethodInsert
 		}
-		partition.Init() // 此处为什么要Init？下 Partitions.Init() 内会再执行一次！
+		partition.Init()
 		source = append(source, partition)
 	}
 
@@ -458,7 +464,18 @@ func (s *partitionService) removePartitions(ctx *shared.Context) error {
 	return nil
 }
 
-func newService(sync *contract.Sync, dao dao.DaoService, mutex *shared.Mutex, jobbService jobs.JobService, historyService history.HistoryService) *partitionService {
+func (s *partitionService) saveIdsTable(ctx *shared.Context) error {
+	// 判断keyColumn是否为空 TODO
+	if len(s.IDColumns) < 1 {
+		logrus.Warn("saveIdsTable, IDColumns is nil, can't saveIdsTable")
+		return nil
+	}
+	_ = s.dao.RecreateIdsTable(ctx, shared.IdsTableSuffix)
+	// 2.creat select
+	return s.Merger.SaveIdsTable(ctx)
+}
+
+func newService(sync *contract.Sync, dao dao.DaoService, mutex *shared.Mutex, jobService jobs.JobService, historyService history.HistoryService) *partitionService {
 	return &partitionService{
 		dao:         dao,
 		DiffService: diff.New(sync, dao),
@@ -468,7 +485,7 @@ func newService(sync *contract.Sync, dao dao.DaoService, mutex *shared.Mutex, jo
 		DbSync:      sync,
 		Strategy:    &sync.Strategy,
 		Mutex:       mutex,
-		job:         jobbService,
+		job:         jobService,
 		history:     historyService,
 	}
 }

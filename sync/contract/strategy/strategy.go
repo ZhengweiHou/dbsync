@@ -16,6 +16,7 @@ type Strategy struct {
 	AppendOnly       bool `description:"if set instead of merge, insert will be used"`
 	AppendUpdateOnly bool `description:"if set instead of merge, insert will be used"`
 	Force            bool `description:"if set skip checks if values in sync"`
+	SaveIdsTable     bool 
 }
 
 //Clone clones strategy

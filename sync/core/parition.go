@@ -120,7 +120,7 @@ func (p *Partition) Init() {
 		p.Strategy = &strategy.Strategy{}
 	}
 	if len(p.IDColumns) == 1 {
-		p.IDColumn = p.IDColumns[0]
+		p.IDColumn = p.IDColumns[0] 
 	}
 
 	p.Suffix = p.buildSuffix()

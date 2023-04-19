@@ -15,6 +15,8 @@ type MergeService interface {
 	Merge(ctx *shared.Context, transferable *core.Transferable) error
 	//Delete removes data from dest table for supplied filter, filter can not be emtpty or error
 	Delete(ctx *shared.Context, filter map[string]interface{}) error
+
+	SaveIdsTable(ctx *shared.Context) error
 }
 
 type mergeService struct {
@@ -137,6 +139,13 @@ func (s *mergeService) Merge(ctx *shared.Context, transferable *core.Transferabl
 		return s.dedupeAppend(ctx, transferable)
 	}
 	return fmt.Errorf("unknown transfer method: %v", transferable.Method)
+}
+
+func (s *mergeService) SaveIdsTable(ctx *shared.Context) (err error) {
+	// idColumns := s.Sync.IDColumns
+	DML, _ := s.Builder.DML(shared.DMLInsertSelectWithKeyColumns, shared.IdsTableSuffix, nil)
+	return s.dao.ExecSQL(ctx, DML)
+	// insert into student2_keystmp (ID ,NaME) select ID ,NaME from STUDENT2
 }
 
 //New creates a new

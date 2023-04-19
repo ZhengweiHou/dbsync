@@ -18,6 +18,7 @@ const (
 	SyncModeIndividual = "individual"
 	//TransientTableSuffix represents transient table suffix
 	TransientTableSuffix = "_tmp"
+	IdsTableSuffix       = "_keystmp"
 
 	//DMLMerge regular MERGE DML
 	DMLMerge = "merge"
@@ -36,6 +37,8 @@ const (
 	DMLDelete = "delete"
 	//DMLFilteredDelete DELETE
 	DMLFilteredDelete = "filteredDelete"
+	//DMLInsertSelectWithKeyColumns INSERT SELECT
+	DMLInsertSelectWithKeyColumns = "insertSelectWithKeyColumns"
 	//TransientDMLDelete transient DELETE DML type
 	TransientDMLDelete = "transientDelete"
 

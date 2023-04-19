@@ -2,13 +2,13 @@
 id: hzwsynctest
 
 # =Sync=
-debug: true
-# table: STUDENT
+# debug: true
+table: STUDENT
 # criteria:
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
 # async: true
 # DMLTimeout: 3
-UseCreateLikeDDL: false
+# UseCreateLikeDDL: false
 
 # =Strategy=
 # chunk:
@@ -16,16 +16,18 @@ UseCreateLikeDDL: false
 # appendOnly: true
 # appendUpdateOnly: true
 # directAppend: true # 是否直接插入目标表
-# force: true # 强制同步
+force: true # 强制同步
 idColumns: 
   - id
+  - name
 # partition:
 #   threads: 3
 #   SyncMode: batch
 #   columns:
 #     - AGE
 #     - GRADES
-mergeStyle: mergeInto
+# mergeStyle: mergeInto
+# SaveIdsTable: true
 
 
 

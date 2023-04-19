@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var errPreviousJobRunning = errors.New("previous sync is running")
@@ -112,7 +114,8 @@ func (s *service) onJobDone(ctx *shared.Context, job *core.Job, response *Respon
 	job.Update()
 	historyJob := s.history.Register(job)
 	elapsedInMs := int(job.EndTime.Sub(job.StartTime) / time.Millisecond)
-	log.Printf("[%v] changed: %v, processed: %v, time taken %v ms\n", job.ID, job.Progress.SourceCount, job.Progress.Transferred, elapsedInMs)
+	logrus.Printf("[%v] changed: %v, processed: %v, time taken %v ms\n", job.ID, job.Progress.SourceCount, job.Progress.Transferred, elapsedInMs)
+	// log.Printf("[%v] changed: %v, processed: %v, time taken %v ms\n", job.ID, job.Progress.SourceCount, job.Progress.Transferred, elapsedInMs)
 	response.Transferred = historyJob.Transferred
 	response.SourceCount = historyJob.SourceCount
 	response.DestCount = historyJob.DestCount

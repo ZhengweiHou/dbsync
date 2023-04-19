@@ -52,6 +52,9 @@ type (
 		//RecreateTransientTable recreate transient table
 		RecreateTransientTable(ctx *shared.Context, suffix string) error
 
+		RecreateIdsTable(ctx *shared.Context, suffix string) error
+		CreateIdsTable(ctx *shared.Context, suffix string) error
+
 		//Builder returns SQL builder
 		Builder() *sql.Builder
 
@@ -139,6 +142,31 @@ func (s *daoService) CreateTransientTable(ctx *shared.Context, suffix string) (e
 	//	DDL = strings.Replace(DDL, dbName+".", "", 1)
 	//}
 	return s.ExecSQL(ctx, DDL)
+}
+
+// RecreateIdsTable 重新创建目标表主键字段临时表，该表后续作为回删依据
+func (s *daoService) RecreateIdsTable(ctx *shared.Context, suffix string) error {
+	_ = s.DropTransientTable(ctx, suffix)
+	return s.CreateIdsTable(ctx, suffix)
+}
+func (s *daoService) CreateIdsTable(ctx *shared.Context, suffix string) (err error) {
+	if suffix == "" {
+		return errSuffixWasEmpty
+	}
+	dbName := s.Transfer.TempDatabase
+	if dbName == "" {
+		if dbName, err = s.DbName(ctx, contract.ResourceKindDest); err != nil {
+			return err
+		}
+	}
+	DDL := s.builder.DDLFromSelectWithKeyColumns(suffix)
+	if err = s.ExecSQL(ctx, DDL); err == nil {
+		return nil
+	}
+	// if the createFromSelect Fails, create using the original create sql
+	// DDL = s.builder.DDLWithKeyColums(suffix) // TODO
+	// return s.ExecSQL(ctx, DDL)
+	return nil
 }
 
 func (s *daoService) partitions(ctx *shared.Context, resource *dbResource) (core.Records, error) {

@@ -79,6 +79,20 @@ func (b *Builder) DDLFromSelect(suffix string) string {
 
 }
 
+func (b *Builder) DDLFromSelectWithKeyColumns(suffix string) string {
+	suffix = normalizeTableName(suffix)
+	ddltemp := ""
+	if b.dest.DriverName == "go_ibm_db" { // db2 create table from select dialect
+		ddltemp = "CREATE TABLE %v AS (select %v  from %v WHERE 1 = 0) definition only"
+	} else {
+		ddltemp = "CREATE TABLE %v AS SELECT %v FROM %v WHERE 1 = 0"
+	}
+
+	columsStr := strings.Join(b.Strategy.IDColumns, ", ")
+
+	return fmt.Sprintf(ddltemp, b.Table(suffix), columsStr, b.Table(""))
+}
+
 //DDL returns transient table DDL for supplied suffix
 func (b *Builder) DDL(tempTable string) string {
 	DDL := b.ddl
@@ -350,6 +364,8 @@ func (b *Builder) DML(dmlType string, suffix string, filter map[string]interface
 		return b.deleteWithFilterDML(suffix, filter), nil
 	case shared.DMLDelete:
 		return b.deleteDML(suffix, filter), nil
+	case shared.DMLInsertSelectWithKeyColumns:
+		return b.insertSelectWithKeyColumnsDML(suffix), nil
 	}
 	return "", fmt.Errorf("unsupported %v", dmlType)
 }
@@ -588,6 +604,14 @@ func (b *Builder) deleteDML(suffix string, filter map[string]interface{}) string
 	}
 	whereClause = removeTableAliases(whereClause, "t")
 	return fmt.Sprintf("DELETE FROM %v %v", b.Table(""), whereClause)
+}
+
+func (b *Builder) insertSelectWithKeyColumnsDML(suffix string) string {
+	suffix = normalizeTableName(suffix)
+	ddltemp := "INSERT INTO %v (%v) SELECT %v FROM %v"
+	columsStr := strings.Join(b.Strategy.IDColumns, ", ")
+
+	return fmt.Sprintf(ddltemp, b.Table(suffix), columsStr, columsStr, b.Table(""))
 }
 
 func (b *Builder) formatColumn(column string) string {
