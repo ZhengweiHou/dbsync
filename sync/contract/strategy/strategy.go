@@ -16,7 +16,8 @@ type Strategy struct {
 	AppendOnly       bool `description:"if set instead of merge, insert will be used"`
 	AppendUpdateOnly bool `description:"if set instead of merge, insert will be used"`
 	Force            bool `description:"if set skip checks if values in sync"`
-	SaveIdsTable     bool 
+	SaveIdsTable     bool
+	Flashback        bool
 }
 
 //Clone clones strategy
@@ -32,6 +33,8 @@ func (s *Strategy) Clone() *Strategy {
 		AppendOnly:       s.AppendOnly,
 		AppendUpdateOnly: s.AppendUpdateOnly,
 		Force:            s.Force,
+		SaveIdsTable:     s.SaveIdsTable,
+		Flashback:        s.Flashback,
 	}
 }
 

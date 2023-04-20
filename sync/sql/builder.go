@@ -8,11 +8,12 @@ import (
 	"dbsync/sync/contract/strategy/diff"
 	"dbsync/sync/shared"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/viant/dsc"
 	"github.com/viant/toolbox"
 	"github.com/viant/toolbox/data"
-	"sort"
-	"strings"
 )
 
 var reservedKeyword = map[string]bool{
@@ -612,6 +613,36 @@ func (b *Builder) insertSelectWithKeyColumnsDML(suffix string) string {
 	columsStr := strings.Join(b.Strategy.IDColumns, ", ")
 
 	return fmt.Sprintf(ddltemp, b.Table(suffix), columsStr, columsStr, b.Table(""))
+}
+
+func (b *Builder) DDLFromFlashbackSelect(suffix string) string {
+	// // selectsql := "SELECT ID,NAME  FROM STUDENT2_KEYSTMP sk WHERE (sk.ID,sk.NAME) NOT IN (SELECT s.ID,s.NAME FROM STUDENT2 s )"
+	columsStr := strings.Join(b.Strategy.IDColumns, ", ")
+	queryTable := b.QueryTable(suffix, b.source)
+	inTable := b.QueryTable("", b.source)
+	ddltemp := "SELECT %v FROM %v WHERE (%v) NOT IN (SELECT %v FROM %v)"
+	return fmt.Sprintf(ddltemp, columsStr, queryTable, columsStr, columsStr, inTable)
+}
+
+const deleteByKeyInValuesSQL = "DELETE FROM %v WHERE (%v) IN  (VALUES "
+const deleteByKeyInSQL = "DELETE FROM %v WHERE (%v) IN  ("
+
+func (b *Builder) DMLDeleteByKeyInValues() (delStr, valueStr string) {
+	var delStrTemp = ""
+	if b.dest.DriverName == "go_ibm_db" {
+		delStrTemp = deleteByKeyInValuesSQL
+	} else {
+		delStrTemp = deleteByKeyInSQL
+	}
+	delStr = fmt.Sprintf(delStrTemp, b.Table(""), strings.Join(b.Strategy.IDColumns, ", ")) + "%v)"
+
+	iDColumsStmts := make([]string, 0)
+	for i := 0; i < len(b.Strategy.IDColumns); i++ {
+		iDColumsStmts = append(iDColumsStmts, "?")
+	}
+
+	valueStr = "(" + strings.Join(iDColumsStmts, ",") + ")"
+	return
 }
 
 func (b *Builder) formatColumn(column string) string {

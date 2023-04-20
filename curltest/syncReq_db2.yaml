@@ -2,7 +2,7 @@
 id: hzwsynctest
 
 # =Sync=
-# debug: true
+debug: true
 table: STUDENT
 # criteria:
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围

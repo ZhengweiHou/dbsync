@@ -1,0 +1,27 @@
+id: hzwsyn_flashback
+
+# =Sync=
+debug: true
+table: STUDENT
+
+idColumns: 
+  - id
+  - name
+Flashback: true
+partitionconf:
+  batchSize: 3
+
+
+source: 
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  driverName: go_ibm_db
+  table: STUDENT2
+dest: 
+  descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
+  driverName: go_ibm_db
+  table: STUDENT
+
+# transfer: 
+#   endpointIP: 127.0.0.1:8082
+#   writerThreads: 2
+#   batchSize: 100

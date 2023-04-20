@@ -12,7 +12,7 @@ partitionconf:
     - AGE
     - GRADES
 diff:
-  batchSize: 1
+  batchSize: 3
 
 #criteria:
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围

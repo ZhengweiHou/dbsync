@@ -60,7 +60,7 @@ func (s *partitionService) Close() error {
 
 //Build build partition sync status
 func (s *partitionService) Build(ctx *shared.Context) (err error) {
-	if !s.IsOptimized() {
+	if !s.IsOptimized() || s.Flashback {
 		return nil
 	}
 	if err = s.buildBatched(ctx); err == nil {
@@ -73,6 +73,14 @@ func (s *partitionService) Sync(ctx *shared.Context) (err error) {
 	if s.Partitions == nil {
 		return fmt.Errorf("partitions were empy")
 	}
+
+	if s.Flashback {
+		// 回删
+		ctx.Log("Flashback")
+		err = s.Merger.SyncFlashback(ctx)
+		return
+	}
+
 	switch s.PartitionConf.SyncMode {
 	case shared.SyncModeBatch:
 		err = s.syncInBatches(ctx)
@@ -410,10 +418,16 @@ func (s *partitionService) loadPartitions(ctx *shared.Context) (err error) {
 			source = append(source, dest[0])
 		}
 
-	} else if s.Force {
+	} else if s.Force || s.Flashback {
 		partition := core.NewPartition(s.Strategy, map[string]interface{}{})
+		method := ""
+		if s.Force {
+			method = shared.SyncMethodDeleteMerge
+		} else if s.Flashback {
+			method = shared.SyncMethodFlashback
+		}
 		partition.Status = &core.Status{
-			Method: shared.SyncMethodDeleteMerge,
+			Method: method,
 			Source: &core.Signature{},
 			Dest:   &core.Signature{},
 		}
@@ -465,7 +479,7 @@ func (s *partitionService) removePartitions(ctx *shared.Context) error {
 }
 
 func (s *partitionService) saveIdsTable(ctx *shared.Context) error {
-	// 判断keyColumn是否为空 TODO
+	// 判断keyColumn是否为空
 	if len(s.IDColumns) < 1 {
 		logrus.Warn("saveIdsTable, IDColumns is nil, can't saveIdsTable")
 		return nil

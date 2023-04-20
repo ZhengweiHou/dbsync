@@ -7,6 +7,9 @@ import (
 	"dbsync/sync/shared"
 	"dbsync/sync/sql"
 	"fmt"
+	"strings"
+
+	"github.com/viant/dsc"
 )
 
 //Service represents a merge service
@@ -17,6 +20,7 @@ type MergeService interface {
 	Delete(ctx *shared.Context, filter map[string]interface{}) error
 
 	SaveIdsTable(ctx *shared.Context) error
+	SyncFlashback(ctx *shared.Context) error
 }
 
 type mergeService struct {
@@ -142,10 +146,99 @@ func (s *mergeService) Merge(ctx *shared.Context, transferable *core.Transferabl
 }
 
 func (s *mergeService) SaveIdsTable(ctx *shared.Context) (err error) {
-	// idColumns := s.Sync.IDColumns
 	DML, _ := s.Builder.DML(shared.DMLInsertSelectWithKeyColumns, shared.IdsTableSuffix, nil)
 	return s.dao.ExecSQL(ctx, DML)
-	// insert into student2_keystmp (ID ,NaME) select ID ,NaME from STUDENT2
+}
+
+func (s *mergeService) SyncFlashback(ctx *shared.Context) error {
+
+	strings.Join(s.IDColumns, ",")
+
+	dcSource := s.dao.Source()
+	batchSize := s.PartitionConf.BatchSize
+	batchRecords := make([][]interface{}, 0)
+
+	dcDest := s.dao.Dest()
+	destCon, err := dcDest.DB.ConnectionProvider().Get()
+	if err != nil {
+		return err
+	}
+
+	deletetemp, valuestr := s.Builder.DMLDeleteByKeyInValues()
+
+	defer destCon.Close()
+	err = destCon.Begin() // 回删任务保持一个事务
+	if err != nil {
+		return err
+	}
+	// 查询待回删的主键列表
+	selectsql := s.Builder.DDLFromFlashbackSelect(shared.IdsTableSuffix)
+	ctx.Log(selectsql)
+	err = dcSource.DB.ReadAllWithHandler(selectsql, nil, func(scanner dsc.Scanner) (toContinue bool, err error) {
+		var record = make([]interface{}, 2)
+		var recordPointers = make([]interface{}, 2)
+		for i := range record {
+			recordPointers[i] = &record[i] // 将原切片中元素的指针取出
+		}
+		err = scanner.Scan(recordPointers...)
+		if err != nil {
+			return false, err
+		}
+
+		// 格式转换
+		for i := range record {
+			rawValue := record[i]
+			b, ok := rawValue.([]byte)
+			if ok {
+				record[i] = string(b)
+			}
+		}
+
+		batchRecords = append(batchRecords, record)
+		if len(batchRecords) >= batchSize {
+			err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr)
+			if err != nil {
+				return false, err
+			}
+			batchRecords = make([][]interface{}, 0)
+		}
+		return true, nil
+	})
+	if err != nil {
+		destCon.Rollback()
+		return err
+	}
+
+	err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr)
+	if err != nil {
+		destCon.Rollback()
+		return err
+	}
+	return destCon.Commit() // 所有删除都正常则提交事务
+}
+
+func (s *mergeService) flashbackInIds(ctx *shared.Context, con *dsc.Connection, batchIds [][]interface{}, deletetemp, valuestr string) error {
+	if len(batchIds) == 0 {
+		return nil
+	}
+
+	var valuestrs = make([]string, 0)
+	var params = make([]interface{}, 0)
+	for _, idRecod := range batchIds {
+		valuestrs = append(valuestrs, valuestr)
+		params = append(params, idRecod...)
+	}
+
+	flashbackSQL := fmt.Sprintf(deletetemp, strings.Join(valuestrs, ","))
+
+	ctx.Log(flashbackSQL)
+	result, err := s.dao.Dest().DB.ExecuteOnConnection(*con, flashbackSQL, params)
+	if err != nil {
+		return err
+	}
+	ctx.Log(result)
+
+	return nil
 }
 
 //New creates a new

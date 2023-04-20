@@ -56,6 +56,7 @@ const (
 	SyncMethodMerge = "merge"
 	//SyncMethodDeleteInsert merge delete sync1 method
 	SyncMethodDeleteInsert = "deleteInsert"
+	SyncMethodFlashback    = "flashback"
 	//MaxRetries max retries
 	MaxRetries = 3
 )

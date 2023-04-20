@@ -63,6 +63,9 @@ type (
 
 		//Closes this service
 		Close() error
+
+		Source() *dbResource
+		Dest() *dbResource
 	}
 )
 
@@ -327,6 +330,13 @@ func (s *daoService) Init(ctx *shared.Context) error {
 		err = s.initBuilder(ctx)
 	}
 	return err
+}
+
+func (s *daoService) Source() *dbResource {
+	return s.source
+}
+func (s *daoService) Dest() *dbResource {
+	return s.dest
 }
 
 //New returns new service
