@@ -1,1 +1,0 @@
-id based chunked synchronization with insert strategy

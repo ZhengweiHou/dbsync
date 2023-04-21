@@ -1,1 +1,0 @@
-mysql to BigQuery partitioned delete merge strategy data sync

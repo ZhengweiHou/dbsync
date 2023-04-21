@@ -1,8 +1,0 @@
-{
-  "Method": "post",
-  "Request": $arg0,
-  "URL": "http://localhost:8081/v1/api/sync",
-  "Expect": {
-    "Status": "error"
-  }
-}
