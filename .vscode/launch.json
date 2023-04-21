@@ -23,7 +23,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/transfer/app/app.go",
-            "args": ["-port", "8082"],
+            "args": ["-port", "8082","-debug"],
             "env": {
                 "CGO_CFLAGS": "-I/home/houzw/document/golang_project/clidriver/include",
                 "CGO_LDFLAGS": "-L/home/houzw/document/golang_project/clidriver/lib",

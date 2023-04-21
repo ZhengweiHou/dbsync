@@ -5,6 +5,7 @@ id: hzwsynctest
 debug: true
 table: STUDENT
 # criteria:
+#   MODIFIED_HID: '> current timestamp - 5 MINUTES'
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
 # async: true
 # DMLTimeout: 3
@@ -27,7 +28,7 @@ idColumns:
 #     - AGE
 #     - GRADES
 # mergeStyle: mergeInto
-# SaveIdsTable: true
+SaveIdsTable: true
 
 
 
@@ -47,5 +48,5 @@ dest:
 
 transfer: 
   endpointIP: 127.0.0.1:8082
-  writerThreads: 2
+  writerThreads: 5
   batchSize: 100

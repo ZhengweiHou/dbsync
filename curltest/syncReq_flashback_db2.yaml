@@ -19,7 +19,7 @@ source:
 dest: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  table: STUDENT
+  table: STUDENT3
 
 # transfer: 
 #   endpointIP: 127.0.0.1:8082
