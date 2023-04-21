@@ -8,6 +8,7 @@ import (
 	"dbsync/sync/sql"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/viant/dsc"
 )
@@ -20,7 +21,7 @@ type MergeService interface {
 	Delete(ctx *shared.Context, filter map[string]interface{}) error
 
 	SaveIdsTable(ctx *shared.Context) error
-	SyncFlashback(ctx *shared.Context) error
+	SyncFlashback(ctx *shared.Context, transferable *core.Transferable) error
 }
 
 type mergeService struct {
@@ -150,7 +151,9 @@ func (s *mergeService) SaveIdsTable(ctx *shared.Context) (err error) {
 	return s.dao.ExecSQL(ctx, DML)
 }
 
-func (s *mergeService) SyncFlashback(ctx *shared.Context) error {
+func (s *mergeService) SyncFlashback(ctx *shared.Context, transferable *core.Transferable) error {
+
+	atomic.StoreUint32(&transferable.Transferred, 0)
 
 	strings.Join(s.IDColumns, ",")
 
@@ -196,7 +199,7 @@ func (s *mergeService) SyncFlashback(ctx *shared.Context) error {
 
 		batchRecords = append(batchRecords, record)
 		if len(batchRecords) >= batchSize {
-			err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr)
+			err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr, transferable)
 			if err != nil {
 				return false, err
 			}
@@ -209,7 +212,7 @@ func (s *mergeService) SyncFlashback(ctx *shared.Context) error {
 		return err
 	}
 
-	err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr)
+	err = s.flashbackInIds(ctx, &destCon, batchRecords, deletetemp, valuestr, transferable)
 	if err != nil {
 		destCon.Rollback()
 		return err
@@ -217,7 +220,7 @@ func (s *mergeService) SyncFlashback(ctx *shared.Context) error {
 	return destCon.Commit() // 所有删除都正常则提交事务
 }
 
-func (s *mergeService) flashbackInIds(ctx *shared.Context, con *dsc.Connection, batchIds [][]interface{}, deletetemp, valuestr string) error {
+func (s *mergeService) flashbackInIds(ctx *shared.Context, con *dsc.Connection, batchIds [][]interface{}, deletetemp, valuestr string, transferable *core.Transferable) error {
 	if len(batchIds) == 0 {
 		return nil
 	}
@@ -236,6 +239,8 @@ func (s *mergeService) flashbackInIds(ctx *shared.Context, con *dsc.Connection, 
 	if err != nil {
 		return err
 	}
+	affectSize, _ := result.RowsAffected()
+	atomic.AddUint32(&transferable.Transferred, uint32(affectSize)) // 累计影响行数
 	ctx.Log(result)
 
 	return nil

@@ -77,7 +77,15 @@ func (s *partitionService) Sync(ctx *shared.Context) (err error) {
 	if s.Flashback {
 		// 回删
 		ctx.Log("Flashback")
-		err = s.Merger.SyncFlashback(ctx)
+		partition := s.Partitions.Source[0]
+
+		job := s.job.Get(ctx.ID)
+		if job == nil {
+			return fmt.Errorf("job was empty: %v", ctx.ID)
+		}
+		job.Add(&partition.Transferable)
+
+		err = s.Merger.SyncFlashback(ctx, &partition.Transferable)
 		return
 	}
 
