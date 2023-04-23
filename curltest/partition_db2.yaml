@@ -1,11 +1,9 @@
 #- Request
-id: hzwsynctest
+id: partitiontest
 debug: true
 table: STUDENT
-force: false # 强制同步 分片模式不可以使用force模式
 idColumns: 
   - id
-  - name
 partitionconf:
   threads: 3
   SyncMode: batch
@@ -26,7 +24,7 @@ source:
   parameters: 
     dbname: db1
   # partitionSQL: SELECT AGE  FROM STUDENT  GROUP BY age ORDER BY age
-  partitionSQL: SELECT AGE,GRADES  FROM STUDENT  GROUP BY age,GRADES  ORDER BY age,GRADES
+  partitionSQL: SELECT AGE,GRADES FROM STUDENT GROUP BY age,GRADES  ORDER BY age,GRADES
 #  table: student
 dest: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST

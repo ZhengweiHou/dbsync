@@ -1,4 +1,4 @@
-id: hzwsyn_flashback
+id: hzwsync_flashback
 
 # =Sync=
 debug: true
@@ -9,7 +9,7 @@ idColumns:
   - name
 Flashback: true
 partitionconf:
-  batchSize: 3
+  batchSize: 10
 
 
 source: 

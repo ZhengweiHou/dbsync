@@ -2,14 +2,14 @@
 	"Async": false,
 	"BatchSize": 100,
 	"Dest": {
-		"Descriptor": "HOSTNAME=localhost;DATABASE=testdb;PORT=50001;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST",
+		"Descriptor": "HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST",
 		"DriverName": "go_ibm_db",
 		"MaxPoolSize": 1,
 		"Parameters": {
 			"dbname": "db2"
 		},
 		"PoolSize": 1,
-		"Table": "STUDENT2"
+		"Table": "STUDENT4"
 	},
 	"Mode": "insert",
 	"OmitEmpty": false,
@@ -21,7 +21,7 @@
 			"dbname": "db1"
 		},
 		"PoolSize": 1,
-		"Query": "SELECT  ID,NAME,AGE,GRADES,MODIFIED FROM STUDENT "
+		"Query": "SELECT * FROM STUDENT "
 	},
 	"WriterCount": 1
 }

@@ -8,32 +8,32 @@ idColumns:
   - name
 partitionconf:
   threads: 3
-  SyncMode: batch
+  # SyncMode: batch
   columns:
-    - AGE
-    - GRADES
+    - ID_MOD
 diff:
   batchSize: 3
 SaveIdsTable: true
 
-#criteria:
-#  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
-    #  modified: '>NOW()-INTERVAL 100000 MINUTE'
-# mergeStyle: mergeInto
+criteria:
+  ID: '>100' # 自定义同步的数据范围
+
 source: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  parameters: 
-    dbname: db1
-  # partitionSQL: SELECT AGE  FROM STUDENT  GROUP BY age ORDER BY age
-  partitionSQL: SELECT AGE,GRADES  FROM STUDENT  GROUP BY age,GRADES  ORDER BY age,GRADES
+  partitionSQL: SELECT DISTINCT ID % 10 AS ID_MOD FROM STUDENT ORDER BY 1
+  pseudoColumns:
+    - name: ID_MOD
+      expression: t.ID % 10
+
 #  table: student
 dest: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  parameters: 
-    dbname: db2
   table: STUDENT2
+  pseudoColumns:
+    - name: ID_MOD
+      expression: t.ID % 10
 
 transfer: 
   endpointIP: 127.0.0.1:8082
