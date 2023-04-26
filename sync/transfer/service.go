@@ -86,8 +86,9 @@ func (s *transferService) NewRequest(ctx *shared.Context, transferable *core.Tra
 	}
 }
 
-func (s *transferService) waitForSync(ctx *shared.Context, syncTaskID int, transferable *core.Transferable, seq int) error {
-	statusURL := fmt.Sprintf(transferStatusURL, s.Transfer.EndpointIP)
+func (s *transferService) waitForSync(ctx *shared.Context, syncTaskID int, transferable *core.Transferable, seq int, endpointIp string) error {
+	// statusURL := fmt.Sprintf(transferStatusURL, s.Transfer.EndpointIP)
+	statusURL := fmt.Sprintf(transferStatusURL, endpointIp)
 	URL := statusURL + fmt.Sprintf("%d", syncTaskID)
 	response := &Response{Status: shared.StatusUnknown}
 	var err error
@@ -162,7 +163,12 @@ func (s *transferService) Post(ctx *shared.Context, request *Request, transferab
 }
 
 func (s *transferService) post(ctx *shared.Context, request *Request, transferable *core.Transferable, seq uint32) (err error) {
-	targetURL := fmt.Sprintf(transferURL, s.Transfer.EndpointIP)
+	// targetURL := fmt.Sprintf(transferURL, s.Transfer.EndpointIP)
+	endpointIp, err := s.Transfer.SelectEndpointIP()
+	if err != nil {
+		return err
+	}
+	targetURL := fmt.Sprintf(transferURL, endpointIp)
 	ctx.Log(fmt.Sprintf("post: %v\n", targetURL))
 	if ctx.Debug {
 		_ = toolbox.DumpIndent(request, true)
@@ -181,7 +187,7 @@ func (s *transferService) post(ctx *shared.Context, request *Request, transferab
 	if response.Status == shared.StatusDone {
 		return nil
 	}
-	return s.waitForSync(ctx, response.TaskID, transferable, int(seq))
+	return s.waitForSync(ctx, response.TaskID, transferable, int(seq), endpointIp)
 }
 
 func newService(sync *contract.Sync, dao dao.DaoService) *transferService {
