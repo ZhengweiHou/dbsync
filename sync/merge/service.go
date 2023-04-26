@@ -178,8 +178,8 @@ func (s *mergeService) SyncFlashback(ctx *shared.Context, transferable *core.Tra
 	selectsql := s.Builder.DDLFromFlashbackSelect(shared.IdsTableSuffix)
 	ctx.Log(selectsql)
 	err = dcSource.DB.ReadAllWithHandler(selectsql, nil, func(scanner dsc.Scanner) (toContinue bool, err error) {
-		var record = make([]interface{}, 2)
-		var recordPointers = make([]interface{}, 2)
+		var record = make([]interface{}, len(s.IDColumns))
+		var recordPointers = make([]interface{}, len(s.IDColumns))
 		for i := range record {
 			recordPointers[i] = &record[i] // 将原切片中元素的指针取出
 		}
