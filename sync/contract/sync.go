@@ -140,7 +140,7 @@ func (r *Sync) Validate() error {
 		}
 	}
 
-	if !r.Flashback && r.Transfer.EndpointIP == "" {
+	if !r.Flashback && r.Transfer.EndpointIP == "" && len(r.Transfer.EndpointIPS) == 0 {
 		return fmt.Errorf("transfer.endpointIP was empty")
 	}
 
