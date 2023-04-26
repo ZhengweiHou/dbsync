@@ -70,9 +70,20 @@ func (b *Builder) DDLFromSelect(suffix string) string {
 	if b.useCrateLikeDDL {
 		ddltemp = "CREATE TABLE %v LIKE %v"
 	} else if b.dest.DriverName == "go_ibm_db" { // db2 create table from select dialect
-		ddltemp = "CREATE TABLE %v AS (select *  from %v WHERE 1 = 0) definition only"
+		ddltemp = "CREATE TABLE %v AS (SELECT * FROM %v WHERE 1 = 0) definition only"
 	} else {
 		ddltemp = "CREATE TABLE %v AS SELECT * FROM %v WHERE 1 = 0"
+	}
+
+	if len(b.Strategy.Columns) > 0 { // TODO by houzw
+		if b.dest.DriverName == "go_ibm_db" {
+			ddltemp = "CREATE TABLE %v AS (SELECT %v FROM %v WHERE 1 = 0) definition only"
+		} else {
+			ddltemp = "CREATE TABLE %v AS SELECT %v FROM %v WHERE 1 = 0"
+		}
+		columsStr := strings.Join(b.Strategy.Columns, ", ")
+
+		return fmt.Sprintf(ddltemp, b.Table(suffix), columsStr, b.Table(""))
 	}
 
 	return fmt.Sprintf(ddltemp, b.Table(suffix), b.Table(""))

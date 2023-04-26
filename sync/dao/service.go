@@ -296,7 +296,8 @@ func (s *daoService) Columns(ctx *shared.Context, table string) ([]dsc.Column, e
 	if err != nil {
 		return nil, err
 	}
-	return dialect.GetColumns(s.dest.DB, datastore, table)
+	return dialect.GetColumnsByColumnNames(s.dest.DB, datastore, table, s.Strategy.Columns)
+	// return dialect.GetColumns(s.dest.DB, datastore, table)
 }
 
 //Close closes resources
