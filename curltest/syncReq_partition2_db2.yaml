@@ -7,24 +7,28 @@ idColumns:
   - id
   - name
 partitionconf:
-  threads: 3
-  # SyncMode: batch
+  threads: 5
+  SyncMode: batch
+  batchSize: 2
   columns:
     - ID_MOD
 diff:
-  batchSize: 3
+  batchSize: 1
 SaveIdsTable: true
+# mergeStyle: mergeInto
 
 criteria:
-  ID: '>100' # 自定义同步的数据范围
+  ID: '>0' # 自定义同步的数据范围
 
 source: 
   descriptor: HOSTNAME=localhost;DATABASE=testdb;PORT=50000;UID=db2inst1;PWD=db2inst1;AUTHENTICATION=SERVER;CurrentSchema=DBSYNCTEST
   driverName: go_ibm_db
-  partitionSQL: SELECT DISTINCT ID % 10 AS ID_MOD FROM STUDENT ORDER BY 1
+  # partitionSQL: SELECT DISTINCT ID % 10 AS ID_MOD FROM STUDENT ORDER BY 1
+  partitionSQL: SELECT DISTINCT mod(ID,10) AS ID_MOD FROM STUDENT ORDER BY 1
   pseudoColumns:
     - name: ID_MOD
-      expression: t.ID % 10
+      # expression: t.ID % 10
+      expression: mod(t.ID,10)
 
 #  table: student
 dest: 
@@ -33,9 +37,13 @@ dest:
   table: STUDENT2
   pseudoColumns:
     - name: ID_MOD
-      expression: t.ID % 10
+      expression: mod(t.ID, 10)
+      # expression: t.ID % 10
 
 transfer: 
-  endpointIP: 127.0.0.1:8082
+  # endpointIP: 127.0.0.1:8082
+  endpointIPs: 
+    - 127.0.0.1:8082
+    - 127.0.0.1:8082
   writerThreads: 2
   batchSize: 100

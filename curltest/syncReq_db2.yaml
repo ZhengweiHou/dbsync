@@ -4,7 +4,16 @@ id: hzwsynctest
 # =Sync=
 debug: true
 table: STUDENT
+columns:
+  - ID
+  - NAME
+#   - AGE
+#   # - GRADES
+  - MODIFIED
+  - MODIFIED_HID
 # criteria:
+#   ID: '<10'
+#   AGE: '<11'
 #   MODIFIED_HID: '> current timestamp - 5 MINUTES'
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
 # async: true
@@ -20,7 +29,7 @@ table: STUDENT
 force: true # 强制同步
 idColumns: 
   - id
-  - name
+  # - name
 # partition:
 #   threads: 3
 #   SyncMode: batch

@@ -6,8 +6,15 @@ force: false # 强制同步 分片模式不可以使用force模式
 idColumns: 
   - id
   - name
+# columns:
+#   - ID
+#   - NAME
+#   - AGE
+  # - GRADES
+  # - MODIFIED
+  # - MODIFIED_HID
 partitionconf:
-  threads: 3
+  threads: 1
   SyncMode: batch
   columns:
     - AGE
@@ -15,8 +22,8 @@ partitionconf:
 diff:
   batchSize: 3
 SaveIdsTable: true
-
-#criteria:
+criteria:
+  ID: '>0' # 自定义同步的数据范围
 #  modified: '>NOW()-INTERVAL 1 HOUR' # 自定义同步的数据范围
     #  modified: '>NOW()-INTERVAL 100000 MINUTE'
 # mergeStyle: mergeInto

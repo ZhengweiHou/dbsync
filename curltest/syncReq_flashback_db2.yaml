@@ -6,7 +6,7 @@ table: STUDENT
 
 idColumns: 
   - id
-  - name
+  # - name
 Flashback: true
 partitionconf:
   batchSize: 10
@@ -21,7 +21,7 @@ dest:
   driverName: go_ibm_db
   table: STUDENT3
 
-# transfer: 
-#   endpointIP: 127.0.0.1:8082
-#   writerThreads: 2
-#   batchSize: 100
+transfer: 
+  endpointIP: 127.0.0.1:8082
+  writerThreads: 2
+  batchSize: 100
